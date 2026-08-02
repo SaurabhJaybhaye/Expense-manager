@@ -59,7 +59,7 @@ export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSi
 
         <button className="btn btn-primary btn-responsive" onClick={onOpenAddTransaction}>
           <PlusCircle size={18} />
-          <span className="btn-label">+ New</span>
+          <span className="btn-label">New</span>
         </button>
 
         {currentUser && (
