@@ -2,13 +2,36 @@ import React, { useState } from 'react';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { formatDate } from '../utils/dateParser';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft } from 'lucide-react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Filter } from 'lucide-react';
+import { DEFAULT_CATEGORIES } from '../constants/categories';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
-  const { transactions, deleteTransaction } = useTransactions();
+  const { transactions, accounts, deleteTransaction } = useTransactions();
+  
+  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [filterAccount, setFilterAccount] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
 
+  // Sorting States: 'date' | 'amount'
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc'); // 'desc' | 'asc'
+
+  // Extract unique category names
+  const allCategoryNames = Array.from(new Set([
+    ...DEFAULT_CATEGORIES.INCOME.map(c => c.name),
+    ...DEFAULT_CATEGORIES.EXPENSE.map(c => c.name),
+    ...transactions.map(t => t.category).filter(Boolean)
+  ]));
+
+  // Extract unique account names
+  const allAccountNames = Array.from(new Set([
+    ...accounts.map(a => a.name),
+    ...transactions.map(t => t.account).filter(Boolean)
+  ]));
+
+  // Filter transactions
   const filteredTransactions = transactions.filter((tx) => {
     const matchesSearch = 
       tx.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -19,19 +42,61 @@ export const Transactions = ({ onOpenAddTransaction }) => {
       filterType === 'all' || 
       (filterType === 'transfer' ? tx.category === 'Account Transfer' : tx.type === filterType);
 
-    return matchesSearch && matchesType;
+    const matchesAccount = 
+      filterAccount === 'all' || 
+      tx.account?.toLowerCase() === filterAccount.toLowerCase();
+
+    const matchesCategory = 
+      filterCategory === 'all' || 
+      tx.category?.toLowerCase() === filterCategory.toLowerCase();
+
+    return matchesSearch && matchesType && matchesAccount && matchesCategory;
   });
+
+  // Sort transactions
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    if (sortKey === 'amount') {
+      const amtA = Number(a.amount || 0);
+      const amtB = Number(b.amount || 0);
+      return sortDirection === 'desc' ? amtB - amtA : amtA - amtB;
+    } else {
+      // Sort by Date
+      const dateA = new Date(a.date || 0).getTime();
+      const dateB = new Date(b.date || 0).getTime();
+      return sortDirection === 'desc' ? dateB - dateA : dateA - dateB;
+    }
+  });
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDirection('desc');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setFilterType('all');
+    setFilterAccount('all');
+    setFilterCategory('all');
+    setSortKey('date');
+    setSortDirection('desc');
+  };
+
+  const isFilterActive = searchTerm || filterType !== 'all' || filterAccount !== 'all' || filterCategory !== 'all';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header & Controls */}
+      {/* Header & Primary Actions */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             Transaction History
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Manage, filter, and search your personal ledger entries.
+            Manage, sort, and filter your personal ledger entries.
           </p>
         </div>
         <button className="btn btn-primary" onClick={onOpenAddTransaction}>
@@ -40,48 +105,133 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         </button>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="glass-card" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Search input */}
-        <div style={{ flex: '1 1 300px', position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            placeholder="Search by note, category, or account..."
-            className="form-input"
-            style={{ paddingLeft: '2.5rem' }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Filter & Sort Control Panel */}
+      <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {/* Top Row: Search & Flow Type Pills */}
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Search bar */}
+          <div style={{ flex: '1 1 300px', position: 'relative' }}>
+            <Search size={18} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Search by note, category, or account..."
+              className="form-input"
+              style={{ paddingLeft: '2.5rem' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Flow Type Pills */}
+          <div style={{ display: 'flex', gap: '0.35rem', backgroundColor: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap' }}>
+            {['all', 'income', 'expense', 'transfer'].map((t) => (
+              <button
+                key={t}
+                className="btn"
+                onClick={() => setFilterType(t)}
+                style={{
+                  fontSize: '0.8rem',
+                  padding: '0.4rem 0.85rem',
+                  backgroundColor: filterType === t ? 'var(--bg-card)' : 'transparent',
+                  color: filterType === t ? 'var(--accent-electric-blue)' : 'var(--text-secondary)',
+                  border: filterType === t ? '1px solid var(--accent-electric-blue)' : '1px solid transparent',
+                  textTransform: 'capitalize'
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Type Filter Buttons */}
-        <div style={{ display: 'flex', gap: '0.35rem', backgroundColor: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap' }}>
-          {['all', 'income', 'expense', 'transfer'].map((t) => (
-            <button
-              key={t}
-              className="btn"
-              onClick={() => setFilterType(t)}
-              style={{
-                fontSize: '0.8rem',
-                padding: '0.4rem 0.85rem',
-                backgroundColor: filterType === t ? 'var(--bg-card)' : 'transparent',
-                color: filterType === t ? 'var(--accent-electric-blue)' : 'var(--text-secondary)',
-                border: filterType === t ? '1px solid var(--accent-electric-blue)' : '1px solid transparent',
-                textTransform: 'capitalize'
-              }}
+        {/* Bottom Row: Field-Specific Filters & Sort Controls */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem',
+          paddingTop: '0.75rem',
+          borderTop: '1px solid var(--border-color)',
+          alignItems: 'center'
+        }}>
+          {/* Filter by Account */}
+          <div>
+            <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Filter size={12} color="var(--accent-neon-green)" /> Filter Account
+            </label>
+            <select
+              className="form-select"
+              value={filterAccount}
+              onChange={(e) => setFilterAccount(e.target.value)}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
             >
-              {t}
-            </button>
-          ))}
+              <option value="all">All Accounts</option>
+              {allAccountNames.map(acc => (
+                <option key={acc} value={acc}>{acc}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter by Category */}
+          <div>
+            <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Filter size={12} color="var(--accent-neon-purple)" /> Filter Category
+            </label>
+            <select
+              className="form-select"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
+            >
+              <option value="all">All Categories</option>
+              {allCategoryNames.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort By Dropdown */}
+          <div>
+            <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <ArrowUpDown size={12} color="var(--accent-electric-blue)" /> Sort By
+            </label>
+            <select
+              className="form-select"
+              value={`${sortKey}-${sortDirection}`}
+              onChange={(e) => {
+                const [key, dir] = e.target.value.split('-');
+                setSortKey(key);
+                setSortDirection(dir);
+              }}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
+            >
+              <option value="date-desc">Date: Newest First</option>
+              <option value="date-asc">Date: Oldest First</option>
+              <option value="amount-desc">Amount: High to Low</option>
+              <option value="amount-asc">Amount: Low to High</option>
+            </select>
+          </div>
+
+          {/* Reset Filters Trigger */}
+          {isFilterActive && (
+            <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={handleResetFilters}
+                style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem', width: '100%', justifyContent: 'center' }}
+              >
+                <RotateCcw size={14} />
+                <span>Reset Filters</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Transactions Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        {filteredTransactions.length === 0 ? (
+        {sortedTransactions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-            No matching transactions found.
+            No matching transactions found for the applied filters.
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -92,13 +242,39 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                   <th style={{ padding: '1rem' }}>Description</th>
                   <th style={{ padding: '1rem' }}>Category</th>
                   <th style={{ padding: '1rem' }}>Payment Account</th>
-                  <th style={{ padding: '1rem', whiteSpace: 'nowrap' }}>Date & Time</th>
-                  <th style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Amount</th>
+                  <th 
+                    style={{ padding: '1rem', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => toggleSort('date')}
+                    title="Click to sort by Date"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>Date & Time</span>
+                      {sortKey === 'date' ? (
+                        sortDirection === 'desc' ? <ArrowDown size={14} color="var(--accent-neon-green)" /> : <ArrowUp size={14} color="var(--accent-neon-green)" />
+                      ) : (
+                        <ArrowUpDown size={14} color="var(--text-muted)" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => toggleSort('amount')}
+                    title="Click to sort by Amount"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                      <span>Amount</span>
+                      {sortKey === 'amount' ? (
+                        sortDirection === 'desc' ? <ArrowDown size={14} color="var(--accent-neon-green)" /> : <ArrowUp size={14} color="var(--accent-neon-green)" />
+                      ) : (
+                        <ArrowUpDown size={14} color="var(--text-muted)" />
+                      )}
+                    </div>
+                  </th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTransactions.map((tx) => (
+                {sortedTransactions.map((tx) => (
                   <tr key={tx.id} style={{ borderBottom: '1px solid rgba(48, 54, 61, 0.4)' }}>
                     <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                       {tx.category === 'Account Transfer' ? (
