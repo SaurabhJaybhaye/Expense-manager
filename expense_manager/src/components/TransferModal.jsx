@@ -3,6 +3,7 @@ import { Modal } from './Modal';
 import { CustomSelect } from './CustomSelect';
 import { useTransactions } from '../context/TransactionContext';
 import { getCurrentDateTimeISO } from '../utils/dateParser';
+import { preventNegativeKey, sanitizePositiveAmount, validatePositiveAmount } from '../utils/validators';
 import { ArrowRightLeft } from 'lucide-react';
 
 export const TransferModal = ({ isOpen, onClose }) => {
@@ -16,13 +17,19 @@ export const TransferModal = ({ isOpen, onClose }) => {
 
   const accountOptions = accounts.map(acc => ({ value: acc.name, label: acc.name }));
 
+  const handleAmountChange = (e) => {
+    const val = sanitizePositiveAmount(e.target.value);
+    setAmount(val);
+    if (error) setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      setError('Please enter a valid positive transfer amount.');
+    const validation = validatePositiveAmount(amount);
+    if (!validation.isValid) {
+      setError('Transfer amount must be a positive number greater than ₹0.00');
       return;
     }
 
@@ -34,7 +41,7 @@ export const TransferModal = ({ isOpen, onClose }) => {
     await addTransfer({
       fromAccount,
       toAccount,
-      amount: numAmount,
+      amount: validation.amount,
       date,
       description: description.trim() || `Internal Transfer (${fromAccount} → ${toAccount})`
     });
@@ -101,11 +108,13 @@ export const TransferModal = ({ isOpen, onClose }) => {
           <label className="form-label">Transfer Amount (INR ₹)</label>
           <input
             type="number"
+            min="0.01"
             step="0.01"
             placeholder="0.00"
             className="form-input"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={preventNegativeKey}
+            onChange={handleAmountChange}
             required
             autoFocus
           />

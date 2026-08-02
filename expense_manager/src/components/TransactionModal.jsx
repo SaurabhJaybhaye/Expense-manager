@@ -4,6 +4,7 @@ import { CustomSelect } from './CustomSelect';
 import { useTransactions } from '../context/TransactionContext';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { getCurrentDateTimeISO } from '../utils/dateParser';
+import { preventNegativeKey, sanitizePositiveAmount, validatePositiveAmount } from '../utils/validators';
 
 export const TransactionModal = ({ isOpen, onClose }) => {
   const { addTransaction, accounts } = useTransactions();
@@ -20,6 +21,8 @@ export const TransactionModal = ({ isOpen, onClose }) => {
       setDate(getCurrentDateTimeISO());
       setCategory(type === 'income' ? DEFAULT_CATEGORIES.INCOME[0].name : DEFAULT_CATEGORIES.EXPENSE[0].name);
       setAccount(accounts[0]?.name || 'Cash');
+      setAmount('');
+      setError('');
     }
   }, [isOpen, type, accounts]);
 
@@ -29,22 +32,29 @@ export const TransactionModal = ({ isOpen, onClose }) => {
     setCategory(catList[0].name);
   };
 
+  const handleAmountChange = (e) => {
+    const val = sanitizePositiveAmount(e.target.value);
+    setAmount(val);
+    if (error) setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      setError('Please enter a valid positive amount.');
+    const validation = validatePositiveAmount(amount);
+    if (!validation.isValid) {
+      setError(validation.error);
       return;
     }
+
     if (!date) {
       setError('Please select a valid date and time.');
       return;
     }
 
     await addTransaction({
-      amount: numAmount,
+      amount: validation.amount,
       type,
       date,
       category,
@@ -52,7 +62,6 @@ export const TransactionModal = ({ isOpen, onClose }) => {
       description: description.trim() || (type === 'income' ? 'Income Entry' : 'Expense Outflow')
     });
 
-    // Reset & Close
     setAmount('');
     setDescription('');
     onClose();
@@ -119,11 +128,13 @@ export const TransactionModal = ({ isOpen, onClose }) => {
           <label className="form-label">Amount (INR ₹)</label>
           <input
             type="number"
+            min="0.01"
             step="0.01"
             placeholder="0.00"
             className="form-input"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={preventNegativeKey}
+            onChange={handleAmountChange}
             required
             autoFocus
           />

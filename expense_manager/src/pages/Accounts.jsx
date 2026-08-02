@@ -4,6 +4,7 @@ import { formatCurrency } from '../utils/currencyFormatter';
 import { Landmark, Banknote, CreditCard, PiggyBank, PlusCircle } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { CustomSelect } from '../components/CustomSelect';
+import { preventNegativeKey, sanitizePositiveAmount } from '../utils/validators';
 
 export const Accounts = () => {
   const { accounts, addAccount, transactions } = useTransactions();
@@ -30,7 +31,7 @@ export const Accounts = () => {
 
   const handleAddAccount = (e) => {
     e.preventDefault();
-    if (!name || !balance) return;
+    if (!name || balance === '') return;
     addAccount({
       name,
       type,
@@ -152,7 +153,8 @@ export const Accounts = () => {
               placeholder="0.00"
               className="form-input"
               value={balance}
-              onChange={(e) => setBalance(e.target.value)}
+              onKeyDown={preventNegativeKey}
+              onChange={(e) => setBalance(sanitizePositiveAmount(e.target.value))}
               required
             />
           </div>
