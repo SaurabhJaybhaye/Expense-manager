@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { parseJSONFile, parseCSVFile, parseExcelFile } from '../services/importEngine';
+import { scanForDuplicates } from '../services/duplicateDetector';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
-import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, FileText, ArrowRight } from 'lucide-react';
+import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, FileText, ArrowRight, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const ImportData = () => {
-  const { importTransactions } = useTransactions();
+  const { importTransactions, transactions, currency } = useTransactions();
   const navigate = useNavigate();
 
   const [file, setFile] = useState(null);
@@ -38,7 +39,9 @@ export const ImportData = () => {
         throw new Error('Unsupported file extension. Please upload a .json, .csv, or .xlsx file.');
       }
 
-      setParsedRows(results);
+      // Run duplicate detector scan against existing transactions ledger
+      const scannedResults = scanForDuplicates(transactions, results);
+      setParsedRows(scannedResults);
     } catch (err) {
       setError(err.message);
       setParsedRows([]);
@@ -48,18 +51,19 @@ export const ImportData = () => {
   };
 
   const handleCommitImport = async () => {
-    const validRows = parsedRows.filter(r => r.isValid);
+    const validRows = parsedRows.filter(r => r.isValid && !r.isDuplicate);
     if (validRows.length === 0) return;
 
     setLoading(true);
-    const count = await importTransactions(parsedRows);
+    const count = await importTransactions(validRows);
     setLoading(false);
     setSuccessMsg(`Successfully imported ${count} valid transactions into your ledger!`);
     setParsedRows([]);
     setFile(null);
   };
 
-  const validCount = parsedRows.filter(r => r.isValid).length;
+  const validCount = parsedRows.filter(r => r.isValid && !r.isDuplicate).length;
+  const duplicateCount = parsedRows.filter(r => r.isDuplicate).length;
   const invalidCount = parsedRows.filter(r => !r.isValid).length;
 
   return (
@@ -69,7 +73,7 @@ export const ImportData = () => {
           Data Import Engine
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Batch import financial records from <strong>JSON</strong>, <strong>CSV</strong>, or <strong>Excel (.xlsx)</strong> files.
+          Batch import financial records with automatic AI duplicate detection.
         </p>
       </div>
 
@@ -150,20 +154,20 @@ export const ImportData = () => {
               Supports .csv, .json, and .xlsx formats with headers like <code>Date, Amount, Category, Type, Account, Description</code>
             </p>
           </div>
-          {loading && <span style={{ color: 'var(--accent-electric-blue)', fontWeight: 600 }}>Parsing file...</span>}
+          {loading && <span style={{ color: 'var(--accent-electric-blue)', fontWeight: 600 }}>Parsing & scanning duplicates...</span>}
         </div>
       </div>
 
-      {/* Validation Results Table */}
+      {/* Validation & Duplicate Scanning Results Table */}
       {parsedRows.length > 0 && (
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Import Validation Report
+                Import Scan Report
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Total Parsed: <strong>{parsedRows.length}</strong> | Valid Rows: <strong style={{ color: 'var(--accent-neon-green)' }}>{validCount}</strong> | Flagged Rows: <strong style={{ color: 'var(--color-danger)' }}>{invalidCount}</strong>
+                Parsed: <strong>{parsedRows.length}</strong> | Valid: <strong style={{ color: 'var(--accent-neon-green)' }}>{validCount}</strong> | Duplicates Flagged: <strong style={{ color: 'var(--color-warning)' }}>{duplicateCount}</strong> | Invalid: <strong style={{ color: 'var(--color-danger)' }}>{invalidCount}</strong>
               </p>
             </div>
 
@@ -173,7 +177,7 @@ export const ImportData = () => {
               onClick={handleCommitImport}
             >
               <CheckCircle2 size={18} />
-              <span>Commit {validCount} Valid Transactions</span>
+              <span>Commit {validCount} Unique Transactions</span>
             </button>
           </div>
 
@@ -196,11 +200,15 @@ export const ImportData = () => {
                     key={row.id || idx}
                     style={{
                       borderBottom: '1px solid rgba(48, 54, 61, 0.4)',
-                      backgroundColor: !row.isValid ? 'rgba(239, 68, 68, 0.08)' : 'transparent'
+                      backgroundColor: row.isDuplicate ? 'rgba(245, 158, 11, 0.08)' : (!row.isValid ? 'rgba(239, 68, 68, 0.08)' : 'transparent')
                     }}
                   >
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      {row.isValid ? (
+                      {row.isDuplicate ? (
+                        <span className="badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)', border: '1px solid rgba(245, 158, 11, 0.3)' }} title={row.duplicateReason}>
+                          <Copy size={12} /> Duplicate
+                        </span>
+                      ) : row.isValid ? (
                         <span className="badge badge-income">Valid</span>
                       ) : (
                         <span className="badge badge-expense" title={row.errors.join(', ')}>
@@ -224,7 +232,7 @@ export const ImportData = () => {
                       {row.description}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: row.isValid ? 'var(--accent-neon-green)' : 'var(--text-muted)' }}>
-                      {formatCurrency(row.amount)}
+                      {formatCurrency(row.amount, currency)}
                     </td>
                   </tr>
                 ))}

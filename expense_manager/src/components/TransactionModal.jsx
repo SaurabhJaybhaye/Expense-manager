@@ -5,6 +5,8 @@ import { useTransactions } from '../context/TransactionContext';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { getCurrentDateTimeISO } from '../utils/dateParser';
 import { preventNegativeKey, sanitizePositiveAmount, validatePositiveAmount } from '../utils/validators';
+import { predictCategory } from '../services/aiEngine';
+import { Sparkles } from 'lucide-react';
 
 export const TransactionModal = ({ isOpen, onClose }) => {
   const { addTransaction, accounts } = useTransactions();
@@ -15,6 +17,7 @@ export const TransactionModal = ({ isOpen, onClose }) => {
   const [account, setAccount] = useState(accounts[0]?.name || 'Cash');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [aiSuggestion, setAiSuggestion] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -22,7 +25,9 @@ export const TransactionModal = ({ isOpen, onClose }) => {
       setCategory(type === 'income' ? DEFAULT_CATEGORIES.INCOME[0].name : DEFAULT_CATEGORIES.EXPENSE[0].name);
       setAccount(accounts[0]?.name || 'Cash');
       setAmount('');
+      setDescription('');
       setError('');
+      setAiSuggestion(null);
     }
   }, [isOpen, type, accounts]);
 
@@ -30,6 +35,23 @@ export const TransactionModal = ({ isOpen, onClose }) => {
     setType(newType);
     const catList = newType === 'income' ? DEFAULT_CATEGORIES.INCOME : DEFAULT_CATEGORIES.EXPENSE;
     setCategory(catList[0].name);
+  };
+
+  const handleDescriptionChange = (e) => {
+    const val = e.target.value;
+    setDescription(val);
+
+    // AI Category Auto-Prediction
+    const pred = predictCategory(val);
+    if (pred.category) {
+      setAiSuggestion(pred);
+      setCategory(pred.category);
+      if (pred.recommendedType && pred.recommendedType !== type) {
+        setType(pred.recommendedType);
+      }
+    } else {
+      setAiSuggestion(null);
+    }
   };
 
   const handleAmountChange = (e) => {
@@ -123,6 +145,26 @@ export const TransactionModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Description / Note Input FIRST for AI auto-categorization */}
+        <div className="form-group">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label className="form-label">Description / Note</label>
+            {aiSuggestion && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--accent-neon-green)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Sparkles size={12} /> Auto-suggested "{aiSuggestion.category}"
+              </span>
+            )}
+          </div>
+          <input
+            type="text"
+            placeholder="e.g. Swiggy dinner, Uber cab, Netflix, Salary..."
+            className="form-input"
+            value={description}
+            onChange={handleDescriptionChange}
+            autoFocus
+          />
+        </div>
+
         {/* Amount Input */}
         <div className="form-group">
           <label className="form-label">Amount (INR ₹)</label>
@@ -136,7 +178,6 @@ export const TransactionModal = ({ isOpen, onClose }) => {
             onKeyDown={preventNegativeKey}
             onChange={handleAmountChange}
             required
-            autoFocus
           />
         </div>
 
@@ -170,18 +211,6 @@ export const TransactionModal = ({ isOpen, onClose }) => {
             options={accountOptions}
             value={account}
             onChange={setAccount}
-          />
-        </div>
-
-        {/* Description / Note */}
-        <div className="form-group">
-          <label className="form-label">Description / Note</label>
-          <input
-            type="text"
-            placeholder="e.g. Swiggy order, Client invoice..."
-            className="form-input"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 

@@ -8,6 +8,7 @@ import { CategoryPieChart } from '../components/CategoryPieChart';
 import { CashFlowChart } from '../components/CashFlowChart';
 import { DateRangeFilter } from '../components/DateRangeFilter';
 import { TransferModal } from '../components/TransferModal';
+import { AiInsightsWidget } from '../components/AiInsightsWidget';
 
 export const Dashboard = ({ onOpenAddTransaction }) => {
   const { transactions, deleteTransaction, currency } = useTransactions();
@@ -169,6 +170,9 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
           </span>
         </div>
       </div>
+
+      {/* AI Financial Insights & Health Score Widget */}
+      <AiInsightsWidget />
 
       {/* Interactive Charts Row */}
       <div className="grid-2">

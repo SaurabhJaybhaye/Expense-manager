@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Landmark, FileSpreadsheet, Settings as SettingsIcon, ShieldCheck, X } from 'lucide-react';
+import { LayoutDashboard, Receipt, Landmark, FileSpreadsheet, Target, Settings as SettingsIcon, ShieldCheck, X } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Transactions', path: '/transactions', icon: Receipt },
     { label: 'Accounts', path: '/accounts', icon: Landmark },
+    { label: 'Smart Budgets', path: '/budgets', icon: Target },
     { label: 'Import Data', path: '/import', icon: FileSpreadsheet },
     { label: 'Settings', path: '/settings', icon: SettingsIcon }
   ];
@@ -97,7 +98,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>Owner Guarded</span>
           </div>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Responsive Dark Mode UI v1.2.0.
+            Smart AI Automation v2.0.0.
           </p>
         </div>
       </aside>
