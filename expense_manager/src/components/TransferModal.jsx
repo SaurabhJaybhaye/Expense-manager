@@ -1,0 +1,156 @@
+import React, { useState } from 'react';
+import { Modal } from './Modal';
+import { useTransactions } from '../context/TransactionContext';
+import { getCurrentDateTimeISO } from '../utils/dateParser';
+import { ArrowRightLeft } from 'lucide-react';
+
+export const TransferModal = ({ isOpen, onClose }) => {
+  const { accounts, addTransfer } = useTransactions();
+  const [fromAccount, setFromAccount] = useState(accounts[0]?.name || '');
+  const [toAccount, setToAccount] = useState(accounts[1]?.name || accounts[0]?.name || '');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(getCurrentDateTimeISO());
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setError('Please enter a valid positive transfer amount.');
+      return;
+    }
+
+    if (fromAccount === toAccount) {
+      setError('Source and Destination accounts must be different.');
+      return;
+    }
+
+    await addTransfer({
+      fromAccount,
+      toAccount,
+      amount: numAmount,
+      date,
+      description: description.trim() || `Internal Transfer (${fromAccount} → ${toAccount})`
+    });
+
+    setAmount('');
+    setDescription('');
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Account-to-Account Transfer">
+      {error && (
+        <div style={{
+          backgroundColor: 'rgba(239, 68, 68, 0.15)',
+          border: '1px solid rgba(239, 68, 68, 0.4)',
+          color: 'var(--color-danger)',
+          padding: '0.65rem 0.85rem',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.85rem',
+          marginBottom: '1rem'
+        }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
+          alignItems: 'center',
+          gap: '0.75rem',
+          marginBottom: '1.25rem'
+        }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">From Account</label>
+            <select
+              className="form-select"
+              value={fromAccount}
+              onChange={(e) => setFromAccount(e.target.value)}
+            >
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.name}>
+                  {acc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{
+            padding: '0.5rem',
+            borderRadius: '50%',
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--accent-electric-blue)',
+            marginTop: '1.25rem'
+          }}>
+            <ArrowRightLeft size={18} />
+          </div>
+
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">To Account</label>
+            <select
+              className="form-select"
+              value={toAccount}
+              onChange={(e) => setToAccount(e.target.value)}
+            >
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.name}>
+                  {acc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Transfer Amount (INR ₹)</label>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            className="form-input"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Date & Time</label>
+          <input
+            type="datetime-local"
+            className="form-input"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Description / Memo</label>
+          <input
+            type="text"
+            placeholder="e.g. ATM Cash Withdrawal, Savings Transfer..."
+            className="form-input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            Confirm Transfer
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};

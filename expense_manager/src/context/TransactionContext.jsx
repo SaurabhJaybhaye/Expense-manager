@@ -74,6 +74,32 @@ export const TransactionProvider = ({ children }) => {
     setTransactions((prev) => [newTx, ...prev]);
   };
 
+  // Add Account-to-Account Transfer
+  const addTransfer = async ({ fromAccount, toAccount, amount, date, description }) => {
+    if (!currentUser) return;
+    const transferOut = await createTransaction(currentUser.uid, {
+      amount,
+      type: 'expense',
+      isTransfer: true,
+      category: 'Account Transfer',
+      account: fromAccount,
+      date,
+      description: `${description} (${fromAccount} → ${toAccount})`
+    });
+
+    const transferIn = await createTransaction(currentUser.uid, {
+      amount,
+      type: 'income',
+      isTransfer: true,
+      category: 'Account Transfer',
+      account: toAccount,
+      date,
+      description: `${description} (${fromAccount} → ${toAccount})`
+    });
+
+    setTransactions((prev) => [transferOut, transferIn, ...prev]);
+  };
+
   // Delete transaction
   const deleteTransaction = async (id) => {
     if (!currentUser) return;
@@ -95,13 +121,13 @@ export const TransactionProvider = ({ children }) => {
     setAccounts(prev => [...prev, { ...newAcc, id: `acc_${Date.now()}` }]);
   };
 
-  // Calculate totals
+  // Calculate totals excluding internal transfers from gross income/expense
   const totalIncome = transactions
-    .filter((tx) => tx.type === 'income')
+    .filter((tx) => tx.type === 'income' && !tx.isTransfer && tx.category !== 'Account Transfer')
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
   const totalExpenses = transactions
-    .filter((tx) => tx.type === 'expense')
+    .filter((tx) => tx.type === 'expense' && !tx.isTransfer && tx.category !== 'Account Transfer')
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
   const totalBalance = totalIncome - totalExpenses;
@@ -116,6 +142,7 @@ export const TransactionProvider = ({ children }) => {
         totalExpenses,
         totalBalance,
         addTransaction,
+        addTransfer,
         deleteTransaction,
         importTransactions,
         addAccount
