@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
+import { CustomSelect } from './CustomSelect';
 import { useTransactions } from '../context/TransactionContext';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { getCurrentDateTimeISO } from '../utils/dateParser';
@@ -17,8 +18,10 @@ export const TransactionModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       setDate(getCurrentDateTimeISO());
+      setCategory(type === 'income' ? DEFAULT_CATEGORIES.INCOME[0].name : DEFAULT_CATEGORIES.EXPENSE[0].name);
+      setAccount(accounts[0]?.name || 'Cash');
     }
-  }, [isOpen]);
+  }, [isOpen, type, accounts]);
 
   const handleTypeSwitch = (newType) => {
     setType(newType);
@@ -55,7 +58,8 @@ export const TransactionModal = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const activeCategories = type === 'income' ? DEFAULT_CATEGORIES.INCOME : DEFAULT_CATEGORIES.EXPENSE;
+  const activeCategories = (type === 'income' ? DEFAULT_CATEGORIES.INCOME : DEFAULT_CATEGORIES.EXPENSE).map(c => c.name);
+  const accountOptions = accounts.map(acc => ({ value: acc.name, label: `${acc.name} (${acc.type})` }));
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Record Manual Transaction">
@@ -139,35 +143,23 @@ export const TransactionModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Category</label>
-            <select
-              className="form-select"
+            <CustomSelect
+              label="Category"
+              options={activeCategories}
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {activeCategories.map((cat) => (
-                <option key={cat.id} value={cat.name}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              onChange={setCategory}
+            />
           </div>
         </div>
 
         {/* Account Selection */}
         <div className="form-group">
-          <label className="form-label">Payment Account</label>
-          <select
-            className="form-select"
+          <CustomSelect
+            label="Payment Account"
+            options={accountOptions}
             value={account}
-            onChange={(e) => setAccount(e.target.value)}
-          >
-            {accounts.map((acc) => (
-              <option key={acc.id} value={acc.name}>
-                {acc.name} ({acc.type})
-              </option>
-            ))}
-          </select>
+            onChange={setAccount}
+          />
         </div>
 
         {/* Description / Note */}

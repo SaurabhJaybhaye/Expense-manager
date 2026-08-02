@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from './Modal';
+import { CustomSelect } from './CustomSelect';
 import { useTransactions } from '../context/TransactionContext';
 import { getCurrentDateTimeISO } from '../utils/dateParser';
 import { ArrowRightLeft } from 'lucide-react';
@@ -12,6 +13,8 @@ export const TransferModal = ({ isOpen, onClose }) => {
   const [date, setDate] = useState(getCurrentDateTimeISO());
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+
+  const accountOptions = accounts.map(acc => ({ value: acc.name, label: acc.name }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,19 +68,13 @@ export const TransferModal = ({ isOpen, onClose }) => {
           gap: '0.75rem',
           marginBottom: '1.25rem'
         }}>
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">From Account</label>
-            <select
-              className="form-select"
+          <div style={{ margin: 0 }}>
+            <CustomSelect
+              label="From Account"
+              options={accountOptions}
               value={fromAccount}
-              onChange={(e) => setFromAccount(e.target.value)}
-            >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.name}>
-                  {acc.name}
-                </option>
-              ))}
-            </select>
+              onChange={setFromAccount}
+            />
           </div>
 
           <div style={{
@@ -90,19 +87,13 @@ export const TransferModal = ({ isOpen, onClose }) => {
             <ArrowRightLeft size={18} />
           </div>
 
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">To Account</label>
-            <select
-              className="form-select"
+          <div style={{ margin: 0 }}>
+            <CustomSelect
+              label="To Account"
+              options={accountOptions}
               value={toAccount}
-              onChange={(e) => setToAccount(e.target.value)}
-            >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.name}>
-                  {acc.name}
-                </option>
-              ))}
-            </select>
+              onChange={setToAccount}
+            />
           </div>
         </div>
 

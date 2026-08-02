@@ -3,6 +3,7 @@ import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { Landmark, Banknote, CreditCard, PiggyBank, PlusCircle } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { CustomSelect } from '../components/CustomSelect';
 
 export const Accounts = () => {
   const { accounts, addAccount, transactions } = useTransactions();
@@ -10,6 +11,13 @@ export const Accounts = () => {
   const [name, setName] = useState('');
   const [type, setType] = useState('bank');
   const [balance, setBalance] = useState('');
+
+  const accountTypeOptions = [
+    { value: 'bank', label: 'Bank Account' },
+    { value: 'cash', label: 'Cash in Hand' },
+    { value: 'credit_card', label: 'Credit Card' },
+    { value: 'savings', label: 'Savings Vault' }
+  ];
 
   const getAccountIcon = (accType) => {
     switch (accType) {
@@ -128,13 +136,12 @@ export const Accounts = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Account Type</label>
-            <select className="form-select" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="bank">Bank Account</option>
-              <option value="cash">Cash in Hand</option>
-              <option value="credit_card">Credit Card</option>
-              <option value="savings">Savings Vault</option>
-            </select>
+            <CustomSelect
+              label="Account Type"
+              options={accountTypeOptions}
+              value={type}
+              onChange={setType}
+            />
           </div>
 
           <div className="form-group">

@@ -209,38 +209,17 @@ body {
   color: var(--text-muted);
 }
 
-/* Custom Styled Select Dropdowns with SVG Icon */
-.form-select {
-  width: 100%;
-  padding: 0.7rem 2.5rem 0.7rem 1rem;
-  background-color: var(--bg-secondary);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--font-family);
-  font-size: 0.95rem;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+/* Calendar & Datetime Indicator Inversion for Dark Mode */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) sepia(100%) hue-rotate(180deg) saturate(300%);
   cursor: pointer;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-image var(--transition-fast);
 }
 
-.form-select:focus {
-  border-color: var(--accent-electric-blue);
-  box-shadow: 0 0 0 3px var(--accent-electric-blue-glow);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300ff87' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
-}
-
-.form-select option {
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  padding: 0.5rem;
+/* Custom Styled Select Option Hover Effects */
+.custom-select-option:hover {
+  background-color: var(--accent-electric-blue-glow) !important;
+  color: var(--accent-electric-blue) !important;
 }
 
 /* Badges & Tags */

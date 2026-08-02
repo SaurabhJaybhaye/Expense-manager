@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { formatDate } from '../utils/dateParser';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Filter } from 'lucide-react';
+import { CustomSelect } from '../components/CustomSelect';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
@@ -25,11 +26,28 @@ export const Transactions = ({ onOpenAddTransaction }) => {
     ...transactions.map(t => t.category).filter(Boolean)
   ]));
 
+  const categoryOptions = [
+    { value: 'all', label: 'All Categories' },
+    ...allCategoryNames.map(cat => ({ value: cat, label: cat }))
+  ];
+
   // Extract unique account names
   const allAccountNames = Array.from(new Set([
     ...accounts.map(a => a.name),
     ...transactions.map(t => t.account).filter(Boolean)
   ]));
+
+  const accountOptions = [
+    { value: 'all', label: 'All Accounts' },
+    ...allAccountNames.map(acc => ({ value: acc, label: acc }))
+  ];
+
+  const sortOptions = [
+    { value: 'date-desc', label: 'Date: Newest First' },
+    { value: 'date-asc', label: 'Date: Oldest First' },
+    { value: 'amount-desc', label: 'Amount: High to Low' },
+    { value: 'amount-asc', label: 'Amount: Low to High' }
+  ];
 
   // Filter transactions
   const filteredTransactions = transactions.filter((tx) => {
@@ -154,70 +172,40 @@ export const Transactions = ({ onOpenAddTransaction }) => {
           alignItems: 'center'
         }}>
           {/* Filter by Account */}
-          <div>
-            <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Filter size={12} color="var(--accent-neon-green)" /> Filter Account
-            </label>
-            <select
-              className="form-select"
-              value={filterAccount}
-              onChange={(e) => setFilterAccount(e.target.value)}
-              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
-            >
-              <option value="all">All Accounts</option>
-              {allAccountNames.map(acc => (
-                <option key={acc} value={acc}>{acc}</option>
-              ))}
-            </select>
-          </div>
+          <CustomSelect
+            label="Filter Account"
+            options={accountOptions}
+            value={filterAccount}
+            onChange={setFilterAccount}
+          />
 
           {/* Filter by Category */}
-          <div>
-            <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Filter size={12} color="var(--accent-neon-purple)" /> Filter Category
-            </label>
-            <select
-              className="form-select"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
-            >
-              <option value="all">All Categories</option>
-              {allCategoryNames.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+          <CustomSelect
+            label="Filter Category"
+            options={categoryOptions}
+            value={filterCategory}
+            onChange={setFilterCategory}
+          />
 
           {/* Sort By Dropdown */}
-          <div>
-            <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <ArrowUpDown size={12} color="var(--accent-electric-blue)" /> Sort By
-            </label>
-            <select
-              className="form-select"
-              value={`${sortKey}-${sortDirection}`}
-              onChange={(e) => {
-                const [key, dir] = e.target.value.split('-');
-                setSortKey(key);
-                setSortDirection(dir);
-              }}
-              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
-            >
-              <option value="date-desc">Date: Newest First</option>
-              <option value="date-asc">Date: Oldest First</option>
-              <option value="amount-desc">Amount: High to Low</option>
-              <option value="amount-asc">Amount: Low to High</option>
-            </select>
-          </div>
+          <CustomSelect
+            label="Sort By"
+            options={sortOptions}
+            value={`${sortKey}-${sortDirection}`}
+            onChange={(val) => {
+              const [key, dir] = val.split('-');
+              setSortKey(key);
+              setSortDirection(dir);
+            }}
+          />
 
           {/* Reset Filters Trigger */}
           {isFilterActive && (
-            <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', marginTop: '1.25rem' }}>
               <button
                 className="btn btn-secondary"
                 onClick={handleResetFilters}
-                style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem', width: '100%', justifyContent: 'center' }}
+                style={{ fontSize: '0.8rem', padding: '0.7rem', width: '100%', justifyContent: 'center' }}
               >
                 <RotateCcw size={14} />
                 <span>Reset Filters</span>
