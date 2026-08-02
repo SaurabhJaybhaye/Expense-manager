@@ -1,18 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { useTransactions } from '../context/TransactionContext';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
-import { getTodayISODate } from '../utils/dateParser';
+import { getCurrentDateTimeISO } from '../utils/dateParser';
 
 export const TransactionModal = ({ isOpen, onClose }) => {
   const { addTransaction, accounts } = useTransactions();
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(getTodayISODate());
+  const [date, setDate] = useState(getCurrentDateTimeISO());
   const [category, setCategory] = useState(DEFAULT_CATEGORIES.EXPENSE[0].name);
   const [account, setAccount] = useState(accounts[0]?.name || 'Cash');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setDate(getCurrentDateTimeISO());
+    }
+  }, [isOpen]);
 
   const handleTypeSwitch = (newType) => {
     setType(newType);
@@ -30,7 +36,7 @@ export const TransactionModal = ({ isOpen, onClose }) => {
       return;
     }
     if (!date) {
-      setError('Please select a valid date.');
+      setError('Please select a valid date and time.');
       return;
     }
 
@@ -119,12 +125,12 @@ export const TransactionModal = ({ isOpen, onClose }) => {
           />
         </div>
 
-        {/* Date & Category Grid */}
+        {/* Date & Time and Category Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group">
-            <label className="form-label">Date</label>
+            <label className="form-label">Date & Time</label>
             <input
-              type="date"
+              type="datetime-local"
               className="form-input"
               value={date}
               onChange={(e) => setDate(e.target.value)}
