@@ -8,3 +8,7 @@
 ## Mobile & Responsive Design Standard
 - All UI layouts, components, tables, navigation bars, cards, and forms MUST be fully responsive across mobile (320px+), tablet, and desktop screens.
 - Use mobile-friendly layouts (flex wrap, CSS grid `minmax`, horizontal table scroll wrappers, touch-friendly tap targets).
+
+## Code Quality & Merge Approval Standard
+- Always verify code quality, build stability (`npm run build`), and feature completeness before proposing a merge.
+- NEVER merge feature branches into main/version release branches (`v1`, `v2`, etc.) without presenting code verification results and obtaining explicit user review and approval first.
