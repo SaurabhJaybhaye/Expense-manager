@@ -16,6 +16,7 @@ import './styles/theme.css';
 const ProtectedLayout = () => {
   const { currentUser } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
@@ -23,9 +24,16 @@ const ProtectedLayout = () => {
 
   return (
     <div className="app-container">
-      <Sidebar />
+      <Sidebar 
+        isOpen={isMobileSidebarOpen} 
+        onClose={() => setIsMobileSidebarOpen(false)} 
+      />
       <div className="main-content">
-        <Navbar onOpenAddTransaction={() => setIsModalOpen(true)} />
+        <Navbar 
+          onOpenAddTransaction={() => setIsModalOpen(true)}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+          isMobileSidebarOpen={isMobileSidebarOpen}
+        />
         <main className="page-body">
           <Routes>
             <Route path="/" element={<Dashboard onOpenAddTransaction={() => setIsModalOpen(true)} />} />
