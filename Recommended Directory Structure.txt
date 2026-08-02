@@ -1,0 +1,17 @@
+src/
+├── assets/             # SVGs, icons, static images
+├── components/         # Reusable UI elements (Buttons, Inputs, Cards, Modals)
+├── constants/          # Application-wide constants & enums
+│   ├── accountTypes.js
+│   ├── categories.js
+│   └── errorMessages.js
+├── context/            # Global React Context (AuthContext, ThemeContext)
+├── pages/              # Main view screens (Dashboard, Transactions, Settings)
+├── services/           # External API & Firebase client setup
+│   ├── firebase.js
+│   └── firestoreService.js
+├── styles/             # Global CSS and CSS variables
+│   └── theme.css
+├── utils/              # Helper functions (Currency formatters, Date parsers)
+├── App.jsx
+└── main.jsx
