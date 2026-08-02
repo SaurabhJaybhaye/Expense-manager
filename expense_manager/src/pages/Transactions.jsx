@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { formatDate } from '../utils/dateParser';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2 } from 'lucide-react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft } from 'lucide-react';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
   const { transactions, deleteTransaction } = useTransactions();
@@ -17,7 +17,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
 
     const matchesType = 
       filterType === 'all' || 
-      tx.type === filterType;
+      (filterType === 'transfer' ? tx.category === 'Account Transfer' : tx.type === filterType);
 
     return matchesSearch && matchesType;
   });
@@ -41,9 +41,9 @@ export const Transactions = ({ onOpenAddTransaction }) => {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="glass-card" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="glass-card" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Search input */}
-        <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+        <div style={{ flex: '1 1 300px', position: 'relative' }}>
           <Search size={18} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             type="text"
@@ -56,8 +56,8 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         </div>
 
         {/* Type Filter Buttons */}
-        <div style={{ display: 'flex', gap: '0.4rem', backgroundColor: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: 'var(--radius-sm)' }}>
-          {['all', 'income', 'expense'].map((t) => (
+        <div style={{ display: 'flex', gap: '0.35rem', backgroundColor: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap' }}>
+          {['all', 'income', 'expense', 'transfer'].map((t) => (
             <button
               key={t}
               className="btn"
@@ -88,20 +88,24 @@ export const Transactions = ({ onOpenAddTransaction }) => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                  <th style={{ padding: '1rem' }}>Flow Type</th>
+                  <th style={{ padding: '1rem', whiteSpace: 'nowrap' }}>Flow Type</th>
                   <th style={{ padding: '1rem' }}>Description</th>
                   <th style={{ padding: '1rem' }}>Category</th>
                   <th style={{ padding: '1rem' }}>Payment Account</th>
-                  <th style={{ padding: '1rem' }}>Date</th>
-                  <th style={{ padding: '1rem', textAlign: 'right' }}>Amount</th>
+                  <th style={{ padding: '1rem', whiteSpace: 'nowrap' }}>Date & Time</th>
+                  <th style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Amount</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTransactions.map((tx) => (
                   <tr key={tx.id} style={{ borderBottom: '1px solid rgba(48, 54, 61, 0.4)' }}>
-                    <td style={{ padding: '1rem' }}>
-                      {tx.type === 'income' ? (
+                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                      {tx.category === 'Account Transfer' ? (
+                        <span className="badge" style={{ backgroundColor: 'var(--accent-electric-blue-glow)', color: 'var(--accent-electric-blue)', border: '1px solid rgba(96, 165, 250, 0.3)' }}>
+                          <ArrowRightLeft size={14} /> Transfer
+                        </span>
+                      ) : tx.type === 'income' ? (
                         <span className="badge badge-income">
                           <ArrowUpRight size={14} /> Inflow
                         </span>
@@ -120,14 +124,15 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
                       {tx.account}
                     </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '1rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {formatDate(tx.date)}
                     </td>
                     <td style={{
                       padding: '1rem',
                       textAlign: 'right',
+                      whiteSpace: 'nowrap',
                       fontWeight: 700,
-                      color: tx.type === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)'
+                      color: tx.category === 'Account Transfer' ? 'var(--accent-electric-blue)' : (tx.type === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)')
                     }}>
                       {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                     </td>

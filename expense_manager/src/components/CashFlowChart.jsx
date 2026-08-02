@@ -32,30 +32,32 @@ const CustomTooltip = ({ active, payload, label }) => {
 export const CashFlowChart = ({ transactions }) => {
   const [timeGranularity, setTimeGranularity] = useState('daily'); // 'daily' | 'monthly'
 
-  // Group transactions by date/month
+  // Group transactions by date/month (excluding internal transfers)
   const dataMap = {};
 
-  transactions.forEach((tx) => {
-    if (!tx.date) return;
-    const d = new Date(tx.date);
-    if (isNaN(d.getTime())) return;
+  transactions
+    .filter((tx) => !tx.isTransfer && tx.category !== 'Account Transfer')
+    .forEach((tx) => {
+      if (!tx.date) return;
+      const d = new Date(tx.date);
+      if (isNaN(d.getTime())) return;
 
-    let periodKey = tx.date.substring(0, 10);
-    if (timeGranularity === 'monthly') {
-      periodKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }
+      let periodKey = tx.date.substring(0, 10);
+      if (timeGranularity === 'monthly') {
+        periodKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
 
-    if (!dataMap[periodKey]) {
-      dataMap[periodKey] = { period: periodKey, income: 0, expense: 0 };
-    }
+      if (!dataMap[periodKey]) {
+        dataMap[periodKey] = { period: periodKey, income: 0, expense: 0 };
+      }
 
-    const amt = Number(tx.amount || 0);
-    if (tx.type === 'income') {
-      dataMap[periodKey].income += amt;
-    } else if (tx.type === 'expense') {
-      dataMap[periodKey].expense += amt;
-    }
-  });
+      const amt = Number(tx.amount || 0);
+      if (tx.type === 'income') {
+        dataMap[periodKey].income += amt;
+      } else if (tx.type === 'expense') {
+        dataMap[periodKey].expense += amt;
+      }
+    });
 
   const chartData = Object.keys(dataMap)
     .sort()
@@ -75,11 +77,12 @@ export const CashFlowChart = ({ transactions }) => {
           className="btn"
           onClick={() => setTimeGranularity('daily')}
           style={{
-            fontSize: '0.75rem',
-            padding: '0.3rem 0.65rem',
-            backgroundColor: timeGranularity === 'daily' ? 'var(--accent-electric-blue-glow)' : 'transparent',
-            color: timeGranularity === 'daily' ? 'var(--accent-electric-blue)' : 'var(--text-muted)',
-            border: timeGranularity === 'daily' ? '1px solid var(--accent-electric-blue)' : '1px solid transparent'
+            fontSize: '0.78rem',
+            padding: '0.35rem 0.75rem',
+            backgroundColor: timeGranularity === 'daily' ? 'var(--bg-card)' : 'var(--bg-secondary)',
+            color: timeGranularity === 'daily' ? 'var(--accent-electric-blue)' : 'var(--text-secondary)',
+            border: timeGranularity === 'daily' ? '1px solid var(--accent-electric-blue)' : '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)'
           }}
         >
           Daily View
@@ -88,11 +91,12 @@ export const CashFlowChart = ({ transactions }) => {
           className="btn"
           onClick={() => setTimeGranularity('monthly')}
           style={{
-            fontSize: '0.75rem',
-            padding: '0.3rem 0.65rem',
-            backgroundColor: timeGranularity === 'monthly' ? 'var(--accent-electric-blue-glow)' : 'transparent',
-            color: timeGranularity === 'monthly' ? 'var(--accent-electric-blue)' : 'var(--text-muted)',
-            border: timeGranularity === 'monthly' ? '1px solid var(--accent-electric-blue)' : '1px solid transparent'
+            fontSize: '0.78rem',
+            padding: '0.35rem 0.75rem',
+            backgroundColor: timeGranularity === 'monthly' ? 'var(--bg-card)' : 'var(--bg-secondary)',
+            color: timeGranularity === 'monthly' ? 'var(--accent-electric-blue)' : 'var(--text-secondary)',
+            border: timeGranularity === 'monthly' ? '1px solid var(--accent-electric-blue)' : '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)'
           }}
         >
           Monthly View

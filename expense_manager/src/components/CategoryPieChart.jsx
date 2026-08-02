@@ -40,7 +40,7 @@ export const CategoryPieChart = ({ transactions }) => {
   // Aggregate expenses by category
   const categoryTotals = {};
   transactions
-    .filter((tx) => tx.type === 'expense')
+    .filter((tx) => tx.type === 'expense' && !tx.isTransfer && tx.category !== 'Account Transfer')
     .forEach((tx) => {
       const cat = tx.category || 'Miscellaneous';
       categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(tx.amount || 0);
@@ -69,7 +69,7 @@ export const CategoryPieChart = ({ transactions }) => {
           <Pie
             data={chartData}
             cx="50%"
-            cy="50%"
+            cy="45%"
             innerRadius={65}
             outerRadius={105}
             paddingAngle={4}
@@ -96,7 +96,7 @@ export const CategoryPieChart = ({ transactions }) => {
       {/* Center Total Overlay */}
       <div style={{
         position: 'absolute',
-        top: '42%',
+        top: '45%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center',

@@ -27,7 +27,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0.5rem 0.75rem 0.25rem'
+            padding: '0.35rem 0.75rem 0.6rem',
+            borderBottom: '1px solid rgba(48, 54, 61, 0.4)'
           }}>
             <span style={{
               fontSize: '0.75rem',
@@ -47,7 +48,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </button>
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.75rem' }}>
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -95,7 +96,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>Owner Guarded</span>
           </div>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Responsive Dark Mode UI v1.0.0.
+            Responsive Dark Mode UI v1.1.0.
           </p>
         </div>
       </aside>

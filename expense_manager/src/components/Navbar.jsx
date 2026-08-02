@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
@@ -11,7 +11,7 @@ export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSi
   return (
     <header className="navbar-container">
       {/* Left: Mobile Toggle & Brand Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
         <button
           className="mobile-menu-btn"
           onClick={onToggleMobileSidebar}
@@ -20,10 +20,10 @@ export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSi
           {isMobileSidebarOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
             borderRadius: '10px',
             background: 'linear-gradient(135deg, var(--accent-neon-green), var(--accent-electric-blue))',
             display: 'flex',
@@ -34,7 +34,7 @@ export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSi
             <Wallet size={20} color="#0b0e14" />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '-0.3px', display: 'flex', gap: '0.35rem' }}>
               <span className="gradient-text-green">EXPENSE</span>
               <span style={{ color: 'var(--text-primary)' }}>MANAGER</span>
             </h1>
@@ -68,12 +68,12 @@ export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSi
               <img 
                 src={currentUser.photoURL} 
                 alt={currentUser.displayName} 
-                style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--accent-neon-green)' }} 
+                style={{ width: '34px', height: '34px', borderRadius: '50%', border: '1px solid var(--accent-neon-green)' }} 
               />
             ) : (
               <div style={{
-                width: '32px',
-                height: '32px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 backgroundColor: 'var(--bg-card)',
                 border: '1px solid var(--border-color)',
