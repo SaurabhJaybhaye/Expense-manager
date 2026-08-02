@@ -1,6 +1,7 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { formatCurrency } from '../utils/currencyFormatter';
+import { useTransactions } from '../context/TransactionContext';
 
 const NEON_COLORS = [
   '#00ff87', // Neon Green
@@ -13,7 +14,7 @@ const NEON_COLORS = [
   '#10b981'  // Emerald
 ];
 
-const CustomTooltip = ({ active, payload }) => {
+const CustomTooltip = ({ active, payload, currency }) => {
   if (active && payload && payload.length) {
     const data = payload[0];
     return (
@@ -28,7 +29,7 @@ const CustomTooltip = ({ active, payload }) => {
           {data.name}
         </div>
         <div style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '1rem', marginTop: '0.2rem' }}>
-          {formatCurrency(data.value)}
+          {formatCurrency(data.value, currency)}
         </div>
       </div>
     );
@@ -37,6 +38,8 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 export const CategoryPieChart = ({ transactions }) => {
+  const { currency } = useTransactions();
+
   // Aggregate expenses by category
   const categoryTotals = {};
   transactions
@@ -84,7 +87,7 @@ export const CategoryPieChart = ({ transactions }) => {
               />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip currency={currency} />} />
           <Legend 
             verticalAlign="bottom" 
             height={36} 
@@ -106,7 +109,7 @@ export const CategoryPieChart = ({ transactions }) => {
           Outflow
         </div>
         <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-neon-pink)' }}>
-          {formatCurrency(totalExpenseSum)}
+          {formatCurrency(totalExpenseSum, currency)}
         </div>
       </div>
     </div>

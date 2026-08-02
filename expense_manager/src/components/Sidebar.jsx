@@ -1,13 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Landmark, FileSpreadsheet, ShieldCheck, X } from 'lucide-react';
+import { LayoutDashboard, Receipt, Landmark, FileSpreadsheet, Settings as SettingsIcon, ShieldCheck, X } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Transactions', path: '/transactions', icon: Receipt },
     { label: 'Accounts', path: '/accounts', icon: Landmark },
-    { label: 'Import Data', path: '/import', icon: FileSpreadsheet }
+    { label: 'Import Data', path: '/import', icon: FileSpreadsheet },
+    { label: 'Settings', path: '/settings', icon: SettingsIcon }
   ];
 
   return (
@@ -96,7 +97,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>Owner Guarded</span>
           </div>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Responsive Dark Mode UI v1.1.0.
+            Responsive Dark Mode UI v1.2.0.
           </p>
         </div>
       </aside>

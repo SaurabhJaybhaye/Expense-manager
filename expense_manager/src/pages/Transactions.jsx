@@ -7,7 +7,7 @@ import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLef
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
-  const { transactions, accounts, deleteTransaction } = useTransactions();
+  const { transactions, accounts, deleteTransaction, currency } = useTransactions();
   
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -298,7 +298,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                       fontWeight: 700,
                       color: tx.category === 'Account Transfer' ? 'var(--accent-electric-blue)' : (tx.type === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)')
                     }}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, currency)}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <button

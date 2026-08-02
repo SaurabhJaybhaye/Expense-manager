@@ -10,7 +10,7 @@ import { DateRangeFilter } from '../components/DateRangeFilter';
 import { TransferModal } from '../components/TransferModal';
 
 export const Dashboard = ({ onOpenAddTransaction }) => {
-  const { transactions, deleteTransaction } = useTransactions();
+  const { transactions, deleteTransaction, currency } = useTransactions();
   const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   // Date Range Filtering state
@@ -116,7 +116,7 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
             </div>
           </div>
           <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: filteredNet >= 0 ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)' }}>
-            {formatCurrency(filteredNet)}
+            {formatCurrency(filteredNet, currency)}
           </h3>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Net inflow minus outflow for selected range
@@ -139,7 +139,7 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
             </div>
           </div>
           <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-success)' }}>
-            {formatCurrency(filteredIncome)}
+            {formatCurrency(filteredIncome, currency)}
           </h3>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Gross positive revenue
@@ -162,7 +162,7 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
             </div>
           </div>
           <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-neon-pink)' }}>
-            {formatCurrency(filteredExpenses)}
+            {formatCurrency(filteredExpenses, currency)}
           </h3>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Gross category expenditures
@@ -265,7 +265,7 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
                       fontWeight: 700,
                       color: tx.category === 'Account Transfer' ? 'var(--accent-electric-blue)' : (tx.type === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)')
                     }}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, currency)}
                     </td>
                     <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
                       <button

@@ -7,7 +7,7 @@ import { CustomSelect } from '../components/CustomSelect';
 import { preventNegativeKey, sanitizePositiveAmount } from '../utils/validators';
 
 export const Accounts = () => {
-  const { accounts, addAccount, transactions } = useTransactions();
+  const { accounts, addAccount, transactions, currency } = useTransactions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState('bank');
@@ -36,7 +36,7 @@ export const Accounts = () => {
       name,
       type,
       balance: parseFloat(balance) || 0,
-      currency: 'INR'
+      currency
     });
     setName('');
     setBalance('');
@@ -89,8 +89,8 @@ export const Accounts = () => {
                     </span>
                   </div>
                 </div>
-                <span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                  INR (₹)
+                <span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-electric-blue)' }}>
+                  {currency}
                 </span>
               </div>
 
@@ -101,7 +101,7 @@ export const Accounts = () => {
                   fontWeight: 800,
                   color: computedBalance >= 0 ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)'
                 }}>
-                  {formatCurrency(computedBalance)}
+                  {formatCurrency(computedBalance, currency)}
                 </h4>
               </div>
 
@@ -146,7 +146,7 @@ export const Accounts = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Opening Balance (INR ₹)</label>
+            <label className="form-label">Opening Balance ({currency})</label>
             <input
               type="number"
               step="0.01"

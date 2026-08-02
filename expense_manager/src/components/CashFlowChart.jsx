@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { formatCurrency, formatCompactNumber } from '../utils/currencyFormatter';
+import { useTransactions } from '../context/TransactionContext';
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, currency }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{
@@ -19,7 +20,7 @@ const CustomTooltip = ({ active, payload, label }) => {
           <div key={entry.name} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', marginTop: '0.2rem' }}>
             <span style={{ color: entry.color, fontWeight: 600 }}>{entry.name}:</span>
             <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-              {formatCurrency(entry.value)}
+              {formatCurrency(entry.value, currency)}
             </span>
           </div>
         ))}
@@ -30,6 +31,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export const CashFlowChart = ({ transactions }) => {
+  const { currency } = useTransactions();
   const [timeGranularity, setTimeGranularity] = useState('daily'); // 'daily' | 'monthly'
 
   // Group transactions by date/month (excluding internal transfers)
@@ -124,7 +126,7 @@ export const CashFlowChart = ({ transactions }) => {
                 tickLine={false} 
                 tickFormatter={(val) => formatCompactNumber(val)} 
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip currency={currency} />} />
               <Legend 
                 verticalAlign="top" 
                 height={36} 

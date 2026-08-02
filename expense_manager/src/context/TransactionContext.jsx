@@ -10,6 +10,14 @@ export const TransactionProvider = ({ children }) => {
   const [transactions, setTransactions] = useState([]);
   const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
   const [loading, setLoading] = useState(true);
+  const [currency, setCurrencyState] = useState(() => {
+    return localStorage.getItem('expense_manager_currency') || 'INR';
+  });
+
+  const setCurrency = (newCurrency) => {
+    setCurrencyState(newCurrency);
+    localStorage.setItem('expense_manager_currency', newCurrency);
+  };
 
   // Load transactions whenever currentUser changes
   useEffect(() => {
@@ -138,6 +146,8 @@ export const TransactionProvider = ({ children }) => {
         transactions,
         accounts,
         loading,
+        currency,
+        setCurrency,
         totalIncome,
         totalExpenses,
         totalBalance,

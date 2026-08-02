@@ -6,7 +6,7 @@ import { PlusCircle, Wallet, LogOut, User, Menu, X } from 'lucide-react';
 
 export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSidebarOpen }) => {
   const { currentUser, logout } = useAuth();
-  const { totalBalance } = useTransactions();
+  const { totalBalance, currency } = useTransactions();
 
   return (
     <header className="navbar-container">
@@ -53,7 +53,7 @@ export const Navbar = ({ onOpenAddTransaction, onToggleMobileSidebar, isMobileSi
             fontWeight: 700,
             color: totalBalance >= 0 ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)'
           }}>
-            {formatCurrency(totalBalance)}
+            {formatCurrency(totalBalance, currency)}
           </span>
         </div>
 
