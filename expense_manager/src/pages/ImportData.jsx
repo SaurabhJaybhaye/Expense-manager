@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { parseJSONFile, parseCSVFile, parseExcelFile } from '../services/importEngine';
+import { parseJSONFile, parseCSVFile, parseExcelFile, normalizeTransaction } from '../services/importEngine';
 import { scanForDuplicates } from '../services/duplicateDetector';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
-import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, FileText, ArrowRight, Copy } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, ArrowRight, Copy, Code, FileUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const ImportData = () => {
   const { importTransactions, transactions, currency } = useTransactions();
   const navigate = useNavigate();
 
+  const [importMode, setImportMode] = useState('file'); // 'file' | 'json_text'
   const [file, setFile] = useState(null);
+  const [jsonText, setJsonText] = useState('');
   const [parsedRows, setParsedRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,6 +52,58 @@ export const ImportData = () => {
     }
   };
 
+  const handleParseJsonText = () => {
+    if (!jsonText.trim()) {
+      setError('Please paste valid JSON text before parsing.');
+      return;
+    }
+
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
+
+    try {
+      const parsed = JSON.parse(jsonText.trim());
+      const rawArray = Array.isArray(parsed) ? parsed : parsed.transactions || [parsed];
+      
+      // Expand nested transfer objects { account: { from, to } }
+      const expandedArray = [];
+      rawArray.forEach((item) => {
+        if (item && typeof item === 'object' && item.account && typeof item.account === 'object' && item.account.from && item.account.to) {
+          // Outflow Transfer
+          expandedArray.push({
+            date: item.date,
+            amount: item.amount,
+            type: 'expense',
+            category: 'Account Transfer',
+            account: item.account.from,
+            description: item.description || `Transfer (${item.account.from} → ${item.account.to})`
+          });
+          // Inflow Transfer
+          expandedArray.push({
+            date: item.date,
+            amount: item.amount,
+            type: 'income',
+            category: 'Account Transfer',
+            account: item.account.to,
+            description: item.description || `Transfer (${item.account.from} → ${item.account.to})`
+          });
+        } else {
+          expandedArray.push(item);
+        }
+      });
+
+      const results = expandedArray.map((row, idx) => normalizeTransaction(row, idx));
+      const scannedResults = scanForDuplicates(transactions, results);
+      setParsedRows(scannedResults);
+    } catch (err) {
+      setError('Invalid JSON syntax: ' + err.message);
+      setParsedRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCommitImport = async () => {
     const validRows = parsedRows.filter(r => r.isValid && !r.isDuplicate);
     if (validRows.length === 0) return;
@@ -60,20 +114,24 @@ export const ImportData = () => {
     setSuccessMsg(`Successfully imported ${count} valid transactions into your ledger!`);
     setParsedRows([]);
     setFile(null);
+    setJsonText('');
   };
 
   const validCount = parsedRows.filter(r => r.isValid && !r.isDuplicate).length;
   const duplicateCount = parsedRows.filter(r => r.isDuplicate).length;
   const invalidCount = parsedRows.filter(r => !r.isValid).length;
 
+  const jsonPlaceholder = `[\n  {\n    "date": "2026-08-03",\n    "amount": 5000,\n    "type": "expense",\n    "category": "Food & Dining",\n    "account": "Cash In Hand",\n    "description": "Team Dinner"\n  },\n  {\n    "date": "2026-08-03",\n    "amount": 10000,\n    "type": "Transfer",\n    "category": "Account Transfer",\n    "account": { "from": "HDFC Bank", "to": "Central Bank" },\n    "description": "Internal Bank Transfer"\n  }\n]`;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* Header */}
       <div>
         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>
           Data Import Engine
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Batch import financial records with automatic AI duplicate detection.
+          Batch import financial records via file upload or direct JSON text pasting.
         </p>
       </div>
 
@@ -112,51 +170,130 @@ export const ImportData = () => {
         </div>
       )}
 
-      {/* Upload Zone */}
-      <div 
-        className="glass-card glass-card-glow-purple" 
-        style={{
-          border: '2px dashed var(--accent-neon-purple)',
-          textAlign: 'center',
-          padding: '3rem 1.5rem',
-          cursor: 'pointer',
-          position: 'relative'
-        }}
-      >
-        <input
-          type="file"
-          accept=".json,.csv,.xlsx,.xls"
-          onChange={handleFileChange}
+      {/* Mode Switcher Tabs */}
+      <div style={{
+        display: 'inline-flex',
+        gap: '0.5rem',
+        backgroundColor: 'var(--bg-secondary)',
+        padding: '0.35rem',
+        borderRadius: 'var(--radius-sm)',
+        width: 'fit-content'
+      }}>
+        <button
+          className="btn"
+          onClick={() => { setImportMode('file'); setParsedRows([]); setError(''); }}
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            opacity: 0,
-            cursor: 'pointer'
+            backgroundColor: importMode === 'file' ? 'var(--bg-card)' : 'transparent',
+            color: importMode === 'file' ? 'var(--accent-neon-purple)' : 'var(--text-secondary)',
+            border: importMode === 'file' ? '1px solid var(--accent-neon-purple)' : '1px solid transparent'
           }}
-        />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div style={{
-            padding: '1rem',
-            borderRadius: '50%',
-            backgroundColor: 'var(--accent-neon-purple-glow)',
-            color: 'var(--accent-neon-purple)'
-          }}>
-            <Upload size={32} />
+        >
+          <FileUp size={16} />
+          <span>Upload File (.csv, .xlsx, .json)</span>
+        </button>
+
+        <button
+          className="btn"
+          onClick={() => { setImportMode('json_text'); setParsedRows([]); setError(''); }}
+          style={{
+            backgroundColor: importMode === 'json_text' ? 'var(--bg-card)' : 'transparent',
+            color: importMode === 'json_text' ? 'var(--accent-neon-green)' : 'var(--text-secondary)',
+            border: importMode === 'json_text' ? '1px solid var(--accent-neon-green)' : '1px solid transparent'
+          }}
+        >
+          <Code size={16} />
+          <span>Paste Direct JSON Text</span>
+        </button>
+      </div>
+
+      {/* Option 1: Drag & Drop File Upload Zone */}
+      {importMode === 'file' && (
+        <div 
+          className="glass-card glass-card-glow-purple" 
+          style={{
+            border: '2px dashed var(--accent-neon-purple)',
+            textAlign: 'center',
+            padding: '3rem 1.5rem',
+            cursor: 'pointer',
+            position: 'relative'
+          }}
+        >
+          <input
+            type="file"
+            accept=".json,.csv,.xlsx,.xls"
+            onChange={handleFileChange}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              opacity: 0,
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div style={{
+              padding: '1rem',
+              borderRadius: '50%',
+              backgroundColor: 'var(--accent-neon-purple-glow)',
+              color: 'var(--accent-neon-purple)'
+            }}>
+              <Upload size={32} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {file ? file.name : 'Drag & Drop or Click to Select File'}
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Supports .csv, .json, and .xlsx formats with headers like <code>Date, Amount, Category, Type, Account, Description</code>
+              </p>
+            </div>
+            {loading && <span style={{ color: 'var(--accent-electric-blue)', fontWeight: 600 }}>Parsing & scanning duplicates...</span>}
           </div>
+        </div>
+      )}
+
+      {/* Option 2: Direct JSON Textarea Input Zone */}
+      {importMode === 'json_text' && (
+        <div className="glass-card glass-card-glow-green" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              {file ? file.name : 'Drag & Drop or Click to Select File'}
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Code size={18} color="var(--accent-neon-green)" />
+              <span>Paste Raw JSON Data</span>
             </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              Supports .csv, .json, and .xlsx formats with headers like <code>Date, Amount, Category, Type, Account, Description</code>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Paste a JSON array or single transfer object directly into the box below:
             </p>
           </div>
-          {loading && <span style={{ color: 'var(--accent-electric-blue)', fontWeight: 600 }}>Parsing & scanning duplicates...</span>}
+
+          <textarea
+            rows={10}
+            className="form-input"
+            style={{ fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: 1.4, resize: 'vertical' }}
+            placeholder={jsonPlaceholder}
+            value={jsonText}
+            onChange={(e) => setJsonText(e.target.value)}
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setJsonText('')}
+            >
+              Clear Text
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleParseJsonText}
+              disabled={loading || !jsonText.trim()}
+            >
+              <Code size={18} />
+              <span>Parse & Scan JSON</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Validation & Duplicate Scanning Results Table */}
       {parsedRows.length > 0 && (
