@@ -32,41 +32,7 @@ export const TransactionProvider = ({ children }) => {
       const data = await fetchUserTransactions(currentUser.uid);
       
       if (isMounted) {
-        if (data.length === 0) {
-          // Seed sample transactions with timestamps for demonstration
-          const samples = [
-            {
-              id: 'tx_sample_1',
-              date: new Date().toISOString(),
-              amount: 85000,
-              type: 'income',
-              category: 'Salary / Wages',
-              account: 'Primary HDFC Bank',
-              description: 'Monthly Tech Salary Credit'
-            },
-            {
-              id: 'tx_sample_2',
-              date: new Date(Date.now() - 86400000 * 2 + 3600000 * 4).toISOString(),
-              amount: 3200,
-              type: 'expense',
-              category: 'Food & Dining',
-              account: 'Credit Card',
-              description: 'Dinner at Neon Bistro'
-            },
-            {
-              id: 'tx_sample_3',
-              date: new Date(Date.now() - 86400000 * 4 + 3600000 * 7).toISOString(),
-              amount: 1499,
-              type: 'expense',
-              category: 'Entertainment & Subscriptions',
-              account: 'Primary HDFC Bank',
-              description: 'Spotify & Netflix Premium'
-            }
-          ];
-          setTransactions(samples);
-        } else {
-          setTransactions(data);
-        }
+        setTransactions(data || []);
         setLoading(false);
       }
     };
