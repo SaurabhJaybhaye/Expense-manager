@@ -51,8 +51,10 @@ export const Login = () => {
             <Wallet size={26} color="#0b0e14" />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Welcome Back</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+              <span className="gradient-text-green">Welcome</span> Back
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
               Sign in to manage your financial ledger
             </p>
           </div>

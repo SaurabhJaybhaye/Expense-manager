@@ -57,8 +57,10 @@ export const Register = () => {
             <Wallet size={26} color="#fff" />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Create Account</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+              <span className="gradient-text-purple">Create</span> Account
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
               Start tracking cash flow with Gen Z aesthetics
             </p>
           </div>

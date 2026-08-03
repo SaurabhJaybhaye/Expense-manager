@@ -56,7 +56,7 @@ export const CreatableSelect = ({
     normalizedOptions.find((opt) => opt.value === value)?.label || value || 'Select Category';
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative' }}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative', zIndex: isOpen ? 200 : 1 }}>
       {label && <label className="form-label">{label}</label>}
 
       {/* Select Trigger Box */}
@@ -99,8 +99,8 @@ export const CreatableSelect = ({
             backgroundColor: 'var(--bg-secondary)',
             border: '1px solid var(--border-color)',
             borderRadius: 'var(--radius-sm)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
-            zIndex: 100,
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.8), 0 0 16px var(--accent-neon-green-glow)',
+            zIndex: 9999,
             maxHeight: '260px',
             display: 'flex',
             flexDirection: 'column',

@@ -40,7 +40,7 @@ export const CustomSelect = ({ options = [], value, onChange, placeholder = 'Sel
   };
 
   return (
-    <div className="custom-select-container" ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+    <div className="custom-select-container" ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: isOpen ? 200 : 1 }}>
       {label && <label className="form-label">{label}</label>}
 
       {/* Select Input Trigger Button */}
@@ -58,7 +58,7 @@ export const CustomSelect = ({ options = [], value, onChange, placeholder = 'Sel
           border: isOpen ? '1px solid var(--accent-electric-blue)' : '1px solid var(--border-color)',
           borderRadius: 'var(--radius-sm)',
           color: 'var(--text-primary)',
-          fontFamily: 'var(--font-family)',
+          fontFamily: 'inherit',
           fontSize: '0.95rem',
           cursor: 'pointer',
           boxShadow: isOpen ? '0 0 0 3px var(--accent-electric-blue-glow)' : 'none',
@@ -87,12 +87,12 @@ export const CustomSelect = ({ options = [], value, onChange, placeholder = 'Sel
             top: 'calc(100% + 4px)',
             left: 0,
             right: 0,
-            backgroundColor: 'var(--bg-card)',
+            backgroundColor: 'var(--bg-secondary)',
             border: '1px solid var(--border-color)',
             borderRadius: 'var(--radius-sm)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6), 0 0 12px var(--accent-electric-blue-glow)',
-            zIndex: 120,
-            maxHeight: '220px',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.8), 0 0 16px var(--accent-electric-blue-glow)',
+            zIndex: 9999,
+            maxHeight: '240px',
             overflowY: 'auto',
             padding: '0.35rem 0'
           }}

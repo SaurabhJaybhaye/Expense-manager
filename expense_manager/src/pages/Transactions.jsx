@@ -123,8 +123,8 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         </button>
       </div>
 
-      {/* Filter & Sort Control Panel */}
-      <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Filter & Sort Control Panel with zIndex 20 for overlaying lower table card */}
+      <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 20 }}>
         {/* Top Row: Search & Flow Type Pills */}
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Search bar */}
@@ -215,14 +215,14 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         </div>
       </div>
 
-      {/* Main Transactions Table */}
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Main Transactions Table with zIndex 1 */}
+      <div className="glass-card" style={{ padding: 0, overflow: 'visible', position: 'relative', zIndex: 1 }}>
         {sortedTransactions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
             No matching transactions found for the applied filters.
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
