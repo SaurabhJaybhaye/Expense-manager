@@ -64,16 +64,16 @@ This document outlines the versioned development release plan for the Expense Ma
 
 ---
 
-## 🤖 Version 2.0.0 — Smart Automation & AI Integration (UPCOMING NEXT PHASE)
+## 🤖 Version 2.0.0 — Smart Automation & AI Integration (✅ Completed & Merged into `v2`)
 
 **Focus:** Adding intelligent features to automate manual tasks and provide personalized financial insights.
 
 ### Features Included:
-* **AI Auto-Categorization:**
-  * Machine learning rule engine to automatically tag transaction categories based on merchant names or import descriptions (e.g., "Uber" → *Transportation*).
-* **Duplicate Transaction Detection:**
-  * Algorithmic flagging during JSON/CSV bulk import for identical transactions (matching timestamp + amount).
-* **Smart Budgeting & Alerts:**
-  * Monthly budget caps per category with visual progress bars and warnings when nearing limits.
-* **AI Spending Insights:**
-  * Automated summary reports providing spending anomaly highlights and monthly saving suggestions.
+* **AI Auto-Categorization:** ✅
+  * Machine learning rule engine to automatically tag transaction categories based on merchant names or import descriptions (e.g., "Uber" → *Transportation & Fuel*, "Swiggy" → *Food & Dining*). Real-time `✨ Auto-suggested` indicator badge in transaction form.
+* **Duplicate Transaction Detection:** ✅
+  * Algorithmic flagging during JSON/CSV/Excel bulk import for duplicate transactions (matching timestamp window + exact amount + description).
+* **Smart Budgeting & Category Limits:** ✅
+  * Monthly budget caps per category with visual neon progress bars (`On Track`, `Near Limit`, `Over Budget`) on `/budgets` and warning alerts.
+* **AI Spending Insights & Health Score Widget:** ✅
+  * Automated financial health score gauge (0 - 100) and AI advice cards on the main dashboard highlighting spending anomalies and saving tips.
