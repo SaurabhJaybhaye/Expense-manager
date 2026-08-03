@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
-import { Landmark, Banknote, CreditCard, PiggyBank, PlusCircle } from 'lucide-react';
+import { Landmark, Banknote, CreditCard, PiggyBank, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { CustomSelect } from '../components/CustomSelect';
 import { preventNegativeKey, sanitizePositiveAmount } from '../utils/validators';
 
 export const Accounts = () => {
-  const { accounts, addAccount, transactions, currency } = useTransactions();
+  const { accounts, addAccount, updateAccount, deleteAccount, transactions, currency } = useTransactions();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState(null);
+
+  // Form states
   const [name, setName] = useState('');
   const [type, setType] = useState('bank');
   const [balance, setBalance] = useState('');
@@ -43,18 +47,52 @@ export const Accounts = () => {
     setIsModalOpen(false);
   };
 
+  const openEditModal = (acc) => {
+    setEditingAccountId(acc.id);
+    setName(acc.name);
+    setType(acc.type);
+    setBalance(String(acc.balance || 0));
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateAccount = (e) => {
+    e.preventDefault();
+    if (!name || balance === '' || !editingAccountId) return;
+    updateAccount({
+      id: editingAccountId,
+      name,
+      type,
+      balance: parseFloat(balance) || 0,
+      currency
+    });
+    setName('');
+    setBalance('');
+    setEditingAccountId(null);
+    setIsEditModalOpen(false);
+  };
+
+  const handleDeleteAccount = (acc) => {
+    if (window.confirm(`Are you sure you want to delete account "${acc.name}"?`)) {
+      deleteAccount(acc.id);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             Account & Multi-Asset Hub
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Monitor balances across Cash, Bank Accounts, and Credit Cards.
+            Monitor, edit, and manage balances across Cash, Bank Accounts, and Credit Cards.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+        <button className="btn btn-primary" onClick={() => {
+          setName('');
+          setBalance('');
+          setIsModalOpen(true);
+        }}>
           <PlusCircle size={18} />
           <span>Add Account</span>
         </button>
@@ -89,9 +127,24 @@ export const Accounts = () => {
                     </span>
                   </div>
                 </div>
-                <span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-electric-blue)' }}>
-                  {currency}
-                </span>
+                
+                {/* Account Actions: Edit & Delete */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <button
+                    onClick={() => openEditModal(acc)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.25rem' }}
+                    title="Edit Account"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAccount(acc)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+                    title="Delete Account"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -121,7 +174,7 @@ export const Accounts = () => {
         })}
       </div>
 
-      {/* Add Account Modal */}
+      {/* Create Account Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Asset Account">
         <form onSubmit={handleAddAccount}>
           <div className="form-group">
@@ -165,6 +218,53 @@ export const Accounts = () => {
             </button>
             <button type="submit" className="btn btn-primary">
               Create Account
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Account Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Asset Account">
+        <form onSubmit={handleUpdateAccount}>
+          <div className="form-group">
+            <label className="form-label">Account Name</label>
+            <input
+              type="text"
+              className="form-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <CustomSelect
+              label="Account Type"
+              options={accountTypeOptions}
+              value={type}
+              onChange={setType}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Opening Balance ({currency})</label>
+            <input
+              type="number"
+              step="0.01"
+              className="form-input"
+              value={balance}
+              onKeyDown={preventNegativeKey}
+              onChange={(e) => setBalance(sanitizePositiveAmount(e.target.value))}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save Account Changes
             </button>
           </div>
         </form>

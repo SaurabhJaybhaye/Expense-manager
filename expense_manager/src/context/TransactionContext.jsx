@@ -8,11 +8,25 @@ const TransactionContext = createContext(null);
 export const TransactionProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState([]);
-  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
+  const [accounts, setAccounts] = useState(() => {
+    const savedAccs = localStorage.getItem('expense_manager_accounts');
+    if (savedAccs) {
+      try {
+        return JSON.parse(savedAccs);
+      } catch (e) {
+        return INITIAL_ACCOUNTS;
+      }
+    }
+    return INITIAL_ACCOUNTS;
+  });
   const [loading, setLoading] = useState(true);
   const [currency, setCurrencyState] = useState(() => {
     return localStorage.getItem('expense_manager_currency') || 'INR';
   });
+
+  useEffect(() => {
+    localStorage.setItem('expense_manager_accounts', JSON.stringify(accounts));
+  }, [accounts]);
 
   const setCurrency = (newCurrency) => {
     setCurrencyState(newCurrency);
@@ -90,9 +104,17 @@ export const TransactionProvider = ({ children }) => {
     return created.length;
   };
 
-  // Add custom account
+  // Account Management CRUD
   const addAccount = (newAcc) => {
     setAccounts(prev => [...prev, { ...newAcc, id: `acc_${Date.now()}` }]);
+  };
+
+  const updateAccount = (updatedAcc) => {
+    setAccounts(prev => prev.map(acc => acc.id === updatedAcc.id ? { ...acc, ...updatedAcc } : acc));
+  };
+
+  const deleteAccount = (accountId) => {
+    setAccounts(prev => prev.filter(acc => acc.id !== accountId));
   };
 
   // Calculate totals excluding internal transfers from gross income/expense
@@ -121,7 +143,9 @@ export const TransactionProvider = ({ children }) => {
         addTransfer,
         deleteTransaction,
         importTransactions,
-        addAccount
+        addAccount,
+        updateAccount,
+        deleteAccount
       }}
     >
       {children}

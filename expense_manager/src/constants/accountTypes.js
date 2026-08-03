@@ -26,7 +26,7 @@ export const ACCOUNT_TYPES = {
 };
 
 export const INITIAL_ACCOUNTS = [
-  { id: 'acc_cash', name: 'Cash', type: 'cash', balance: 5000, currency: 'INR' },
-  { id: 'acc_bank', name: 'Primary HDFC Bank', type: 'bank', balance: 45000, currency: 'INR' },
-  { id: 'acc_cc', name: 'ICICI Credit Card', type: 'credit_card', balance: -8200, currency: 'INR' }
+  { id: 'acc_cash', name: 'Cash In Hand', type: 'cash', balance: 0, currency: 'INR' },
+  { id: 'acc_bank', name: 'Primary Bank Account', type: 'bank', balance: 0, currency: 'INR' },
+  { id: 'acc_cc', name: 'Credit Card', type: 'credit_card', balance: 0, currency: 'INR' }
 ];
