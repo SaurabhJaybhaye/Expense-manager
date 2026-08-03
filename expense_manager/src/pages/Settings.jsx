@@ -1,16 +1,28 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTransactions } from '../context/TransactionContext';
+import { useCategories } from '../context/CategoryContext';
 import { CURRENCY_MAP } from '../utils/currencyFormatter';
 import { exportToCSV, exportToJSON } from '../services/exportEngine';
-import { User, Globe, Download, Check, ShieldCheck, Sparkles, FileSpreadsheet, FileJson } from 'lucide-react';
+import { User, Globe, Download, Check, ShieldCheck, Sparkles, FileSpreadsheet, FileJson, Tags, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { Modal } from '../components/Modal';
 
 export const Settings = () => {
   const { currentUser } = useAuth();
   const { currency, setCurrency, transactions } = useTransactions();
+  const { incomeCategories, expenseCategories, addCategory, updateCategory, deleteCategory } = useCategories();
+
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
   const [isSaved, setIsSaved] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
+
+  // Category Manager States
+  const [activeCategoryType, setActiveCategoryType] = useState('expense');
+  const [newCatName, setNewCatName] = useState('');
+  const [isAddCatModalOpen, setIsAddCatModalOpen] = useState(false);
+  const [isEditCatModalOpen, setIsEditCatModalOpen] = useState(false);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [renamedCategoryName, setRenamedCategoryName] = useState('');
 
   const handleProfileSave = (e) => {
     e.preventDefault();
@@ -34,6 +46,37 @@ export const Settings = () => {
     }
   };
 
+  const handleCreateCategory = (e) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    addCategory(newCatName.trim(), activeCategoryType);
+    setNewCatName('');
+    setIsAddCatModalOpen(false);
+  };
+
+  const handleOpenEditCat = (catName) => {
+    setEditingCategoryName(catName);
+    setRenamedCategoryName(catName);
+    setIsEditCatModalOpen(true);
+  };
+
+  const handleSaveRenameCat = (e) => {
+    e.preventDefault();
+    if (!renamedCategoryName.trim() || !editingCategoryName) return;
+    updateCategory(editingCategoryName, renamedCategoryName.trim(), activeCategoryType);
+    setEditingCategoryName('');
+    setRenamedCategoryName('');
+    setIsEditCatModalOpen(false);
+  };
+
+  const handleDeleteCat = (catName) => {
+    if (window.confirm(`Delete category "${catName}"?`)) {
+      deleteCategory(catName, activeCategoryType);
+    }
+  };
+
+  const currentCategoryList = activeCategoryType === 'income' ? incomeCategories : expenseCategories;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Header */}
@@ -42,8 +85,105 @@ export const Settings = () => {
           Settings & Preferences
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Manage your user profile, currency display units, and ledger backups.
+          Manage user profiles, custom categories, currency display units, and ledger backups.
         </p>
+      </div>
+
+      {/* Category Manager Section */}
+      <div className="glass-card glass-card-glow-purple">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Tags size={22} color="var(--accent-neon-purple)" />
+            <div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Category Management Hub
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Create, edit/rename, or delete Income and Expense transaction categories.
+              </p>
+            </div>
+          </div>
+
+          <button className="btn btn-primary" onClick={() => { setNewCatName(''); setIsAddCatModalOpen(true); }}>
+            <PlusCircle size={18} />
+            <span>Add Custom Category</span>
+          </button>
+        </div>
+
+        {/* Category Type Switcher (Income vs Expense) */}
+        <div style={{
+          display: 'inline-flex',
+          gap: '0.5rem',
+          backgroundColor: 'var(--bg-secondary)',
+          padding: '0.35rem',
+          borderRadius: 'var(--radius-sm)',
+          marginBottom: '1.25rem'
+        }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setActiveCategoryType('expense')}
+            style={{
+              backgroundColor: activeCategoryType === 'expense' ? 'var(--accent-neon-pink)' : 'transparent',
+              color: activeCategoryType === 'expense' ? '#fff' : 'var(--text-secondary)',
+              boxShadow: activeCategoryType === 'expense' ? '0 0 12px var(--accent-neon-pink-glow)' : 'none',
+              padding: '0.4rem 1rem'
+            }}
+          >
+            Expense Categories ({expenseCategories.length})
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setActiveCategoryType('income')}
+            style={{
+              backgroundColor: activeCategoryType === 'income' ? 'var(--accent-neon-green)' : 'transparent',
+              color: activeCategoryType === 'income' ? '#0b0e14' : 'var(--text-secondary)',
+              boxShadow: activeCategoryType === 'income' ? '0 0 12px var(--accent-neon-green-glow)' : 'none',
+              padding: '0.4rem 1rem'
+            }}
+          >
+            Income Categories ({incomeCategories.length})
+          </button>
+        </div>
+
+        {/* Category Chips Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.85rem' }}>
+          {currentCategoryList.map((catName) => (
+            <div
+              key={catName}
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '0.65rem 0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{catName}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <button
+                  onClick={() => handleOpenEditCat(catName)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }}
+                  title="Rename Category"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  onClick={() => handleDeleteCat(catName)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.2rem' }}
+                  title="Delete Category"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Profile Section */}
@@ -72,7 +212,7 @@ export const Settings = () => {
             <input
               type="email"
               className="form-input"
-              value={currentUser?.email || 'demo@expensemanager.app'}
+              value={currentUser?.email || 'user@expensemanager.app'}
               disabled
               style={{ opacity: 0.6, cursor: 'not-allowed' }}
             />
@@ -198,27 +338,58 @@ export const Settings = () => {
         </div>
       </div>
 
-      {/* Version & Build Information Card */}
-      <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <ShieldCheck size={24} color="var(--accent-neon-green)" />
-          <div>
-            <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span>Expense Manager</span>
-              <span className="badge" style={{ backgroundColor: 'var(--accent-neon-purple-glow)', color: 'var(--accent-neon-purple)', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
-                v1.2.0 Release
-              </span>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Gen Z Dark Mode Design System • Full Widescreen Grid • Multi-Currency Engine
-            </p>
+      {/* Add Custom Category Modal */}
+      <Modal isOpen={isAddCatModalOpen} onClose={() => setIsAddCatModalOpen(false)} title={`Add ${activeCategoryType === 'income' ? 'Income' : 'Expense'} Category`}>
+        <form onSubmit={handleCreateCategory}>
+          <div className="form-group">
+            <label className="form-label">Category Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Subscriptions, Gaming, Freelance Royalty..."
+              className="form-input"
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              required
+              autoFocus
+            />
           </div>
-        </div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-          <Sparkles size={14} color="var(--accent-neon-green)" style={{ marginRight: '0.35rem' }} />
-          Owner Isolated & Secured
-        </div>
-      </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setIsAddCatModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Create Category
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Category Modal */}
+      <Modal isOpen={isEditCatModalOpen} onClose={() => setIsEditCatModalOpen(false)} title="Rename Category">
+        <form onSubmit={handleSaveRenameCat}>
+          <div className="form-group">
+            <label className="form-label">Category Name</label>
+            <input
+              type="text"
+              className="form-input"
+              value={renamedCategoryName}
+              onChange={(e) => setRenamedCategoryName(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setIsEditCatModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save Category Name
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

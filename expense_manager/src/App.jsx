@@ -1,6 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CategoryProvider } from './context/CategoryContext';
 import { TransactionProvider } from './context/TransactionContext';
 import { BudgetProvider } from './context/BudgetContext';
 import { Navbar } from './components/Navbar';
@@ -80,19 +81,21 @@ const ProtectedLayout = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <TransactionProvider>
-        <BudgetProvider>
-          <BrowserRouter>
-            <Suspense fallback={<PageLoadingFallback />}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/*" element={<ProtectedLayout />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </BudgetProvider>
-      </TransactionProvider>
+      <CategoryProvider>
+        <TransactionProvider>
+          <BudgetProvider>
+            <BrowserRouter>
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/*" element={<ProtectedLayout />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </BudgetProvider>
+        </TransactionProvider>
+      </CategoryProvider>
     </AuthProvider>
   );
 }

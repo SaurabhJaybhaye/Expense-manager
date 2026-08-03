@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { CustomSelect } from './CustomSelect';
+import { CreatableSelect } from './CreatableSelect';
 import { useTransactions } from '../context/TransactionContext';
-import { DEFAULT_CATEGORIES } from '../constants/categories';
+import { useCategories } from '../context/CategoryContext';
 import { getCurrentDateTimeISO } from '../utils/dateParser';
 import { preventNegativeKey, sanitizePositiveAmount, validatePositiveAmount } from '../utils/validators';
 import { predictCategory } from '../services/aiEngine';
@@ -10,19 +11,24 @@ import { Sparkles } from 'lucide-react';
 
 export const TransactionModal = ({ isOpen, onClose }) => {
   const { addTransaction, accounts } = useTransactions();
+  const { incomeCategories, expenseCategories, addCategory } = useCategories();
+
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(getCurrentDateTimeISO());
-  const [category, setCategory] = useState(DEFAULT_CATEGORIES.EXPENSE[0].name);
+  const [category, setCategory] = useState('');
   const [account, setAccount] = useState(accounts[0]?.name || 'Cash');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState(null);
 
+  const activeCategories = type === 'income' ? incomeCategories : expenseCategories;
+
   useEffect(() => {
     if (isOpen) {
       setDate(getCurrentDateTimeISO());
-      setCategory(type === 'income' ? DEFAULT_CATEGORIES.INCOME[0].name : DEFAULT_CATEGORIES.EXPENSE[0].name);
+      const cats = type === 'income' ? incomeCategories : expenseCategories;
+      setCategory(cats[0] || '');
       setAccount(accounts[0]?.name || 'Cash');
       setAmount('');
       setDescription('');
@@ -33,8 +39,8 @@ export const TransactionModal = ({ isOpen, onClose }) => {
 
   const handleTypeSwitch = (newType) => {
     setType(newType);
-    const catList = newType === 'income' ? DEFAULT_CATEGORIES.INCOME : DEFAULT_CATEGORIES.EXPENSE;
-    setCategory(catList[0].name);
+    const cats = newType === 'income' ? incomeCategories : expenseCategories;
+    setCategory(cats[0] || '');
   };
 
   const handleDescriptionChange = (e) => {
@@ -60,6 +66,10 @@ export const TransactionModal = ({ isOpen, onClose }) => {
     if (error) setError('');
   };
 
+  const handleCreateNewCategory = (newCatName) => {
+    addCategory(newCatName, type);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -72,6 +82,11 @@ export const TransactionModal = ({ isOpen, onClose }) => {
 
     if (!date) {
       setError('Please select a valid date and time.');
+      return;
+    }
+
+    if (!category) {
+      setError('Please select or create a category.');
       return;
     }
 
@@ -89,7 +104,6 @@ export const TransactionModal = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const activeCategories = (type === 'income' ? DEFAULT_CATEGORIES.INCOME : DEFAULT_CATEGORIES.EXPENSE).map(c => c.name);
   const accountOptions = accounts.map(acc => ({ value: acc.name, label: `${acc.name} (${acc.type})` }));
 
   return (
@@ -181,7 +195,7 @@ export const TransactionModal = ({ isOpen, onClose }) => {
           />
         </div>
 
-        {/* Date & Time and Category Grid */}
+        {/* Date & Time and Creatable Category Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group">
             <label className="form-label">Date & Time</label>
@@ -195,11 +209,13 @@ export const TransactionModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="form-group">
-            <CustomSelect
+            <CreatableSelect
               label="Category"
               options={activeCategories}
               value={category}
               onChange={setCategory}
+              onCreateNew={handleCreateNewCategory}
+              placeholder="Search or create category..."
             />
           </div>
         </div>
