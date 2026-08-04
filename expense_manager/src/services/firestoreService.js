@@ -13,203 +13,178 @@ import {
 } from 'firebase/firestore';
 import { INITIAL_ACCOUNTS } from '../constants/accountTypes';
 
-const GLOBAL_TX_KEY = 'expense_manager_transactions';
-const GLOBAL_ACC_KEY = 'expense_manager_accounts';
-
-const getUserTxKey = (userId) => userId ? `expense_manager_tx_${userId}` : GLOBAL_TX_KEY;
-const getUserAccKey = (userId) => userId ? `expense_manager_accounts_${userId}` : GLOBAL_ACC_KEY;
-
-// Helper to load local storage data safely
-const getLocalData = (key) => {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
-};
-
-const setLocalData = (key, data) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error('Failed to update local storage', e);
-  }
-};
-
 /**
- * Fetch owner transactions (combines Firestore + local storage fallback)
+ * Fetch user transactions directly from Cloud Firestore
  */
 export const fetchUserTransactions = async (userId) => {
-  const userTxKey = getUserTxKey(userId);
-  let localList = getLocalData(userTxKey) || getLocalData(GLOBAL_TX_KEY) || [];
+  if (!userId || !isConfigured || !db) return [];
 
-  if (userId) {
-    localList = localList.filter(tx => tx.userId === userId || !tx.userId);
+  try {
+    const q = query(collection(db, 'transactions'), where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const list = [];
+    querySnapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    // Sort newest first by date/createdAt
+    return list.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+  } catch (e) {
+    console.error('Firestore fetchUserTransactions error:', e.message);
+    return [];
   }
-
-  if (isConfigured && db && userId) {
-    try {
-      const q = query(collection(db, 'transactions'), where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
-      const remoteList = [];
-      querySnapshot.forEach((docSnap) => {
-        remoteList.push({ id: docSnap.id, ...docSnap.data() });
-      });
-
-      if (remoteList.length > 0) {
-        // Merge remote + local uniquely by ID
-        const map = new Map();
-        [...remoteList, ...localList].forEach(tx => map.set(tx.id, tx));
-        const merged = Array.from(map.values());
-        setLocalData(userTxKey, merged);
-        setLocalData(GLOBAL_TX_KEY, merged);
-        return merged;
-      }
-    } catch (e) {
-      console.warn('Firestore fetch failed, serving local storage data:', e.message);
-    }
-  }
-
-  return localList;
 };
 
 /**
- * Create transaction (guarantees local storage write + background Firestore sync)
+ * Create a new transaction directly in Cloud Firestore
  */
 export const createTransaction = async (userId, txData) => {
-  const userTxKey = getUserTxKey(userId);
   const payload = {
     ...txData,
-    userId: userId || 'local_user',
+    userId: userId || 'anonymous',
     createdAt: new Date().toISOString()
   };
 
-  const newTx = {
-    id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-    ...payload
-  };
-
-  // 1. Save to local storage immediately
-  const localList = getLocalData(userTxKey) || getLocalData(GLOBAL_TX_KEY) || [];
-  const updatedLocal = [newTx, ...localList];
-  setLocalData(userTxKey, updatedLocal);
-  setLocalData(GLOBAL_TX_KEY, updatedLocal);
-
-  // 2. Sync with Firestore if configured
-  if (isConfigured && db && userId) {
+  if (isConfigured && db) {
     try {
       const docRef = await addDoc(collection(db, 'transactions'), {
         ...payload,
         createdAt: serverTimestamp()
       });
-      newTx.id = docRef.id;
+      return { id: docRef.id, ...payload };
     } catch (e) {
-      console.warn('Firestore add warning, retained local storage record:', e.message);
+      console.error('Firestore createTransaction error:', e.message);
     }
   }
 
-  return newTx;
+  return { id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, ...payload };
 };
 
 /**
- * Batch create imported transactions (guarantees bulk write to local storage + background Firestore sync)
+ * Batch create imported transactions directly in Cloud Firestore
  */
 export const batchCreateTransactions = async (userId, transactionsArray) => {
   if (!transactionsArray || transactionsArray.length === 0) return [];
+  const results = [];
 
-  const userTxKey = getUserTxKey(userId);
-  const createdList = transactionsArray.map((tx, idx) => ({
-    id: `import_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 4)}`,
-    ...tx,
-    userId: userId || 'local_user',
-    createdAt: new Date().toISOString()
-  }));
-
-  // 1. Immediately prepend all created items to local storage
-  const existingLocal = getLocalData(userTxKey) || getLocalData(GLOBAL_TX_KEY) || [];
-  const mergedLocal = [...createdList, ...existingLocal];
-  setLocalData(userTxKey, mergedLocal);
-  setLocalData(GLOBAL_TX_KEY, mergedLocal);
-
-  // 2. Sync with Firestore in background if configured
-  if (isConfigured && db && userId) {
-    for (const item of createdList) {
-      try {
-        await addDoc(collection(db, 'transactions'), {
-          ...item,
-          createdAt: serverTimestamp()
-        });
-      } catch (e) {
-        console.warn('Firestore batch item add warning:', e.message);
-      }
-    }
+  for (const item of transactionsArray) {
+    const created = await createTransaction(userId, item);
+    results.push(created);
   }
 
-  return createdList;
+  return results;
 };
 
 /**
- * Delete transaction with owner check
+ * Delete a transaction directly from Cloud Firestore
  */
 export const removeTransaction = async (userId, transactionId) => {
-  const userTxKey = getUserTxKey(userId);
-
-  if (isConfigured && db && userId) {
+  if (isConfigured && db && transactionId) {
     try {
       const docRef = doc(db, 'transactions', transactionId);
       await deleteDoc(docRef);
+      return true;
     } catch (e) {
-      console.warn('Firestore delete warning:', e.message);
+      console.error('Firestore removeTransaction error:', e.message);
     }
   }
-
-  const list = getLocalData(userTxKey) || getLocalData(GLOBAL_TX_KEY) || [];
-  const filtered = list.filter(tx => tx.id !== transactionId);
-  setLocalData(userTxKey, filtered);
-  setLocalData(GLOBAL_TX_KEY, filtered);
-  return true;
+  return false;
 };
 
 /**
- * Fetch User Accounts (from LocalStorage + Firestore fallback)
+ * Fetch User Accounts directly from Cloud Firestore
  */
 export const fetchUserAccounts = async (userId) => {
-  const userAccKey = getUserAccKey(userId);
-  const local = getLocalData(userAccKey) || getLocalData(GLOBAL_ACC_KEY);
+  if (!userId || !isConfigured || !db) return INITIAL_ACCOUNTS;
 
-  if (isConfigured && db && userId) {
-    try {
-      const docRef = doc(db, 'users', userId, 'settings', 'accounts');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists() && docSnap.data().accounts) {
-        const remoteAccs = docSnap.data().accounts;
-        setLocalData(userAccKey, remoteAccs);
-        setLocalData(GLOBAL_ACC_KEY, remoteAccs);
-        return remoteAccs;
-      }
-    } catch (e) {
-      console.warn('Firestore accounts fetch failed, serving local storage accounts:', e.message);
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'accounts');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists() && docSnap.data().accounts) {
+      return docSnap.data().accounts;
     }
+  } catch (e) {
+    console.error('Firestore fetchUserAccounts error:', e.message);
   }
 
-  return local && local.length > 0 ? local : INITIAL_ACCOUNTS;
+  return INITIAL_ACCOUNTS;
 };
 
 /**
- * Save User Accounts (to LocalStorage + background Firestore sync)
+ * Save User Accounts directly to Cloud Firestore
  */
 export const saveUserAccounts = async (userId, accounts) => {
-  const userAccKey = getUserAccKey(userId);
-  setLocalData(userAccKey, accounts);
-  setLocalData(GLOBAL_ACC_KEY, accounts);
+  if (!userId || !isConfigured || !db) return;
 
-  if (isConfigured && db && userId) {
-    try {
-      const docRef = doc(db, 'users', userId, 'settings', 'accounts');
-      await setDoc(docRef, { accounts, updatedAt: serverTimestamp() }, { merge: true });
-    } catch (e) {
-      console.warn('Firestore accounts save warning:', e.message);
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'accounts');
+    await setDoc(docRef, { accounts, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.error('Firestore saveUserAccounts error:', e.message);
+  }
+};
+
+/**
+ * Fetch Custom Categories directly from Cloud Firestore
+ */
+export const fetchUserCategories = async (userId) => {
+  if (!userId || !isConfigured || !db) return { income: [], expense: [] };
+
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'categories');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists() && docSnap.data().categories) {
+      return docSnap.data().categories;
     }
+  } catch (e) {
+    console.error('Firestore fetchUserCategories error:', e.message);
+  }
+
+  return { income: [], expense: [] };
+};
+
+/**
+ * Save Custom Categories directly to Cloud Firestore
+ */
+export const saveUserCategories = async (userId, categories) => {
+  if (!userId || !isConfigured || !db) return;
+
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'categories');
+    await setDoc(docRef, { categories, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.error('Firestore saveUserCategories error:', e.message);
+  }
+};
+
+/**
+ * Fetch Category Budgets directly from Cloud Firestore
+ */
+export const fetchUserBudgets = async (userId) => {
+  if (!userId || !isConfigured || !db) return {};
+
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'budgets');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists() && docSnap.data().budgets) {
+      return docSnap.data().budgets;
+    }
+  } catch (e) {
+    console.error('Firestore fetchUserBudgets error:', e.message);
+  }
+
+  return {};
+};
+
+/**
+ * Save Category Budgets directly to Cloud Firestore
+ */
+export const saveUserBudgets = async (userId, budgets) => {
+  if (!userId || !isConfigured || !db) return;
+
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'budgets');
+    await setDoc(docRef, { budgets, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.error('Firestore saveUserBudgets error:', e.message);
   }
 };

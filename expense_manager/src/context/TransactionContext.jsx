@@ -15,48 +15,35 @@ const TransactionContext = createContext(null);
 export const TransactionProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState([]);
-  const [accounts, setAccounts] = useState(() => {
-    const userId = currentUser?.uid;
-    const key = userId ? `expense_manager_accounts_${userId}` : 'expense_manager_accounts';
-    try {
-      const saved = localStorage.getItem(key) || localStorage.getItem('expense_manager_accounts');
-      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
-    } catch (e) {
-      return INITIAL_ACCOUNTS;
-    }
-  });
+  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
   const [loading, setLoading] = useState(true);
-  const [currency, setCurrencyState] = useState(() => {
-    return localStorage.getItem('expense_manager_currency') || 'INR';
-  });
+  const [currency, setCurrency] = useState('INR');
 
-  const setCurrency = (newCurrency) => {
-    setCurrencyState(newCurrency);
-    localStorage.setItem('expense_manager_currency', newCurrency);
-  };
-
-  // Load transactions and user accounts whenever currentUser changes
+  // Load transactions and user accounts directly from Firestore whenever currentUser changes
   useEffect(() => {
     let isMounted = true;
 
     const loadUserData = async () => {
-      const userId = currentUser?.uid || 'local_default_user';
+      if (!currentUser) {
+        setTransactions([]);
+        setAccounts(INITIAL_ACCOUNTS);
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
       try {
         const [userTxList, userAccs] = await Promise.all([
-          fetchUserTransactions(userId),
-          fetchUserAccounts(userId)
+          fetchUserTransactions(currentUser.uid),
+          fetchUserAccounts(currentUser.uid)
         ]);
 
         if (isMounted) {
           setTransactions(userTxList || []);
-          if (userAccs && userAccs.length > 0) {
-            setAccounts(userAccs);
-          }
+          setAccounts(userAccs || INITIAL_ACCOUNTS);
         }
       } catch (err) {
-        console.error('Error loading user data:', err);
+        console.error('Error loading user data from Firestore:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -66,24 +53,25 @@ export const TransactionProvider = ({ children }) => {
     return () => { isMounted = false; };
   }, [currentUser]);
 
-  // Persist accounts whenever accounts state is modified
+  // Save accounts directly to Firestore
   const updateAndSaveAccounts = (newAccounts) => {
     setAccounts(newAccounts);
-    const userId = currentUser?.uid || 'local_default_user';
-    saveUserAccounts(userId, newAccounts);
+    if (currentUser) {
+      saveUserAccounts(currentUser.uid, newAccounts);
+    }
   };
 
   // Add transaction
   const addTransaction = async (txData) => {
-    const userId = currentUser?.uid || 'local_default_user';
-    const newTx = await createTransaction(userId, txData);
+    if (!currentUser) return;
+    const newTx = await createTransaction(currentUser.uid, txData);
     setTransactions((prev) => [newTx, ...prev]);
   };
 
   // Add Account-to-Account Transfer
   const addTransfer = async ({ fromAccount, toAccount, amount, date, description }) => {
-    const userId = currentUser?.uid || 'local_default_user';
-    const transferOut = await createTransaction(userId, {
+    if (!currentUser) return;
+    const transferOut = await createTransaction(currentUser.uid, {
       amount,
       type: 'expense',
       isTransfer: true,
@@ -93,7 +81,7 @@ export const TransactionProvider = ({ children }) => {
       description: `${description} (${fromAccount} → ${toAccount})`
     });
 
-    const transferIn = await createTransaction(userId, {
+    const transferIn = await createTransaction(currentUser.uid, {
       amount,
       type: 'income',
       isTransfer: true,
@@ -108,16 +96,16 @@ export const TransactionProvider = ({ children }) => {
 
   // Delete transaction
   const deleteTransaction = async (id) => {
-    const userId = currentUser?.uid || 'local_default_user';
-    await removeTransaction(userId, id);
+    if (!currentUser) return;
+    await removeTransaction(currentUser.uid, id);
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
   };
 
   // Batch import transactions
   const importTransactions = async (importedList) => {
-    const userId = currentUser?.uid || 'local_default_user';
+    if (!currentUser) return 0;
     const validItems = importedList.filter((tx) => tx.isValid);
-    const created = await batchCreateTransactions(userId, validItems);
+    const created = await batchCreateTransactions(currentUser.uid, validItems);
     setTransactions((prev) => [...created, ...prev]);
     return created.length;
   };

@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
+import { useAuth } from './AuthContext';
+import { fetchUserCategories, saveUserCategories } from '../services/firestoreService';
 
 const CategoryContext = createContext(null);
 
@@ -9,21 +11,33 @@ const INITIAL_CUSTOM_CATEGORIES = {
 };
 
 export const CategoryProvider = ({ children }) => {
-  const [customCategories, setCustomCategories] = useState(() => {
-    const saved = localStorage.getItem('expense_manager_custom_categories');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return INITIAL_CUSTOM_CATEGORIES;
-      }
-    }
-    return INITIAL_CUSTOM_CATEGORIES;
-  });
+  const { currentUser } = useAuth();
+  const [customCategories, setCustomCategories] = useState(INITIAL_CUSTOM_CATEGORIES);
 
+  // Load custom categories from Firestore when currentUser changes
   useEffect(() => {
-    localStorage.setItem('expense_manager_custom_categories', JSON.stringify(customCategories));
-  }, [customCategories]);
+    let isMounted = true;
+    const loadCategories = async () => {
+      if (!currentUser) {
+        setCustomCategories(INITIAL_CUSTOM_CATEGORIES);
+        return;
+      }
+      const data = await fetchUserCategories(currentUser.uid);
+      if (isMounted && data) {
+        setCustomCategories(data);
+      }
+    };
+    loadCategories();
+    return () => { isMounted = false; };
+  }, [currentUser]);
+
+  // Helper to update and save categories to Firestore
+  const updateAndSaveCategories = (newCategories) => {
+    setCustomCategories(newCategories);
+    if (currentUser) {
+      saveUserCategories(currentUser.uid, newCategories);
+    }
+  };
 
   // Combine default category names with custom categories
   const defaultIncomeNames = DEFAULT_CATEGORIES.INCOME.map(c => c.name);
@@ -37,14 +51,14 @@ export const CategoryProvider = ({ children }) => {
     const cleanName = name.trim();
     if (!cleanName) return;
 
-    setCustomCategories((prev) => {
-      const targetList = prev[type] || [];
-      if (targetList.includes(cleanName)) return prev;
-      return {
-        ...prev,
-        [type]: [...targetList, cleanName]
-      };
-    });
+    const targetList = customCategories[type] || [];
+    if (targetList.includes(cleanName)) return;
+
+    const updated = {
+      ...customCategories,
+      [type]: [...targetList, cleanName]
+    };
+    updateAndSaveCategories(updated);
   };
 
   const updateCategory = (oldName, newName, type = 'expense') => {
@@ -52,24 +66,22 @@ export const CategoryProvider = ({ children }) => {
     const cleanNew = newName.trim();
     if (!cleanNew) return;
 
-    setCustomCategories((prev) => {
-      const targetList = prev[type] || [];
-      return {
-        ...prev,
-        [type]: targetList.map((item) => (item === oldName ? cleanNew : item))
-      };
-    });
+    const targetList = customCategories[type] || [];
+    const updated = {
+      ...customCategories,
+      [type]: targetList.map((item) => (item === oldName ? cleanNew : item))
+    };
+    updateAndSaveCategories(updated);
   };
 
   const deleteCategory = (name, type = 'expense') => {
     if (!name) return;
-    setCustomCategories((prev) => {
-      const targetList = prev[type] || [];
-      return {
-        ...prev,
-        [type]: targetList.filter((item) => item !== name)
-      };
-    });
+    const targetList = customCategories[type] || [];
+    const updated = {
+      ...customCategories,
+      [type]: targetList.filter((item) => item !== name)
+    };
+    updateAndSaveCategories(updated);
   };
 
   return (
