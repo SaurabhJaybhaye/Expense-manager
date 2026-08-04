@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { fetchUserTransactions, createTransaction, removeTransaction, batchCreateTransactions } from '../services/firestoreService';
+import { 
+  fetchUserTransactions, 
+  createTransaction, 
+  removeTransaction, 
+  batchCreateTransactions,
+  fetchUserAccounts,
+  saveUserAccounts 
+} from '../services/firestoreService';
 import { INITIAL_ACCOUNTS } from '../constants/accountTypes';
 
 const TransactionContext = createContext(null);
@@ -9,63 +16,74 @@ export const TransactionProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [accounts, setAccounts] = useState(() => {
-    const savedAccs = localStorage.getItem('expense_manager_accounts');
-    if (savedAccs) {
-      try {
-        return JSON.parse(savedAccs);
-      } catch (e) {
-        return INITIAL_ACCOUNTS;
-      }
+    const userId = currentUser?.uid;
+    const key = userId ? `expense_manager_accounts_${userId}` : 'expense_manager_accounts';
+    try {
+      const saved = localStorage.getItem(key) || localStorage.getItem('expense_manager_accounts');
+      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
+    } catch (e) {
+      return INITIAL_ACCOUNTS;
     }
-    return INITIAL_ACCOUNTS;
   });
   const [loading, setLoading] = useState(true);
   const [currency, setCurrencyState] = useState(() => {
     return localStorage.getItem('expense_manager_currency') || 'INR';
   });
 
-  useEffect(() => {
-    localStorage.setItem('expense_manager_accounts', JSON.stringify(accounts));
-  }, [accounts]);
-
   const setCurrency = (newCurrency) => {
     setCurrencyState(newCurrency);
     localStorage.setItem('expense_manager_currency', newCurrency);
   };
 
-  // Load transactions whenever currentUser changes
+  // Load transactions and user accounts whenever currentUser changes
   useEffect(() => {
     let isMounted = true;
-    const loadData = async () => {
-      if (!currentUser) {
-        setTransactions([]);
-        setLoading(false);
-        return;
-      }
+
+    const loadUserData = async () => {
+      const userId = currentUser?.uid || 'local_default_user';
+
       setLoading(true);
-      const data = await fetchUserTransactions(currentUser.uid);
-      
-      if (isMounted) {
-        setTransactions(data || []);
-        setLoading(false);
+      try {
+        const [userTxList, userAccs] = await Promise.all([
+          fetchUserTransactions(userId),
+          fetchUserAccounts(userId)
+        ]);
+
+        if (isMounted) {
+          setTransactions(userTxList || []);
+          if (userAccs && userAccs.length > 0) {
+            setAccounts(userAccs);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading user data:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
-    loadData();
+    loadUserData();
     return () => { isMounted = false; };
   }, [currentUser]);
 
+  // Persist accounts whenever accounts state is modified
+  const updateAndSaveAccounts = (newAccounts) => {
+    setAccounts(newAccounts);
+    const userId = currentUser?.uid || 'local_default_user';
+    saveUserAccounts(userId, newAccounts);
+  };
+
   // Add transaction
   const addTransaction = async (txData) => {
-    if (!currentUser) return;
-    const newTx = await createTransaction(currentUser.uid, txData);
+    const userId = currentUser?.uid || 'local_default_user';
+    const newTx = await createTransaction(userId, txData);
     setTransactions((prev) => [newTx, ...prev]);
   };
 
   // Add Account-to-Account Transfer
   const addTransfer = async ({ fromAccount, toAccount, amount, date, description }) => {
-    if (!currentUser) return;
-    const transferOut = await createTransaction(currentUser.uid, {
+    const userId = currentUser?.uid || 'local_default_user';
+    const transferOut = await createTransaction(userId, {
       amount,
       type: 'expense',
       isTransfer: true,
@@ -75,7 +93,7 @@ export const TransactionProvider = ({ children }) => {
       description: `${description} (${fromAccount} → ${toAccount})`
     });
 
-    const transferIn = await createTransaction(currentUser.uid, {
+    const transferIn = await createTransaction(userId, {
       amount,
       type: 'income',
       isTransfer: true,
@@ -90,31 +108,34 @@ export const TransactionProvider = ({ children }) => {
 
   // Delete transaction
   const deleteTransaction = async (id) => {
-    if (!currentUser) return;
-    await removeTransaction(currentUser.uid, id);
+    const userId = currentUser?.uid || 'local_default_user';
+    await removeTransaction(userId, id);
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
   };
 
   // Batch import transactions
   const importTransactions = async (importedList) => {
-    if (!currentUser) return;
+    const userId = currentUser?.uid || 'local_default_user';
     const validItems = importedList.filter((tx) => tx.isValid);
-    const created = await batchCreateTransactions(currentUser.uid, validItems);
+    const created = await batchCreateTransactions(userId, validItems);
     setTransactions((prev) => [...created, ...prev]);
     return created.length;
   };
 
   // Account Management CRUD
   const addAccount = (newAcc) => {
-    setAccounts(prev => [...prev, { ...newAcc, id: `acc_${Date.now()}` }]);
+    const updated = [...accounts, { ...newAcc, id: `acc_${Date.now()}` }];
+    updateAndSaveAccounts(updated);
   };
 
   const updateAccount = (updatedAcc) => {
-    setAccounts(prev => prev.map(acc => acc.id === updatedAcc.id ? { ...acc, ...updatedAcc } : acc));
+    const updated = accounts.map(acc => acc.id === updatedAcc.id ? { ...acc, ...updatedAcc } : acc);
+    updateAndSaveAccounts(updated);
   };
 
   const deleteAccount = (accountId) => {
-    setAccounts(prev => prev.filter(acc => acc.id !== accountId));
+    const updated = accounts.filter(acc => acc.id !== accountId);
+    updateAndSaveAccounts(updated);
   };
 
   // Calculate totals excluding internal transfers from gross income/expense
