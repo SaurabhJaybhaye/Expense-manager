@@ -91,6 +91,20 @@ export const removeTransaction = async (userId, transactionId) => {
 };
 
 /**
+ * Batch delete transactions directly from Cloud Firestore
+ */
+export const batchRemoveTransactions = async (userId, transactionIds) => {
+  if (!transactionIds || transactionIds.length === 0) return true;
+  try {
+    await Promise.all(transactionIds.map(id => removeTransaction(userId, id)));
+    return true;
+  } catch (e) {
+    console.error('Firestore batchRemoveTransactions error:', e.message);
+    return false;
+  }
+};
+
+/**
  * Update an existing transaction directly in Cloud Firestore
  */
 export const editTransactionInFirestore = async (userId, transactionId, updatedData) => {

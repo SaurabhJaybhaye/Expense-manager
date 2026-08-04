@@ -4,6 +4,7 @@ import {
   fetchUserTransactions, 
   createTransaction, 
   removeTransaction, 
+  batchRemoveTransactions,
   batchCreateTransactions,
   fetchUserAccounts,
   saveUserAccounts,
@@ -98,11 +99,19 @@ export const TransactionProvider = ({ children }) => {
     setTransactions((prev) => [transferOut, transferIn, ...prev]);
   };
 
-  // Delete transaction
+  // Delete single transaction
   const deleteTransaction = async (id) => {
     const userId = currentUser?.uid || 'local_default_user';
     await removeTransaction(userId, id);
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+  };
+
+  // Bulk Delete multiple transactions
+  const bulkDeleteTransactions = async (transactionIds) => {
+    if (!transactionIds || transactionIds.length === 0) return;
+    const userId = currentUser?.uid || 'local_default_user';
+    await batchRemoveTransactions(userId, transactionIds);
+    setTransactions((prev) => prev.filter((tx) => !transactionIds.includes(tx.id)));
   };
 
   // Batch import transactions
@@ -172,6 +181,7 @@ export const TransactionProvider = ({ children }) => {
         updateTransaction,
         addTransfer,
         deleteTransaction,
+        bulkDeleteTransactions,
         importTransactions,
         addAccount,
         updateAccount,

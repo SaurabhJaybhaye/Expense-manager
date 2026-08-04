@@ -6,11 +6,11 @@ import { CustomSelect } from '../components/CustomSelect';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { TransactionModal } from '../components/TransactionModal';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, Pencil, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, Pencil, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, CheckSquare, Square, XCircle } from 'lucide-react';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
-  const { transactions, accounts, deleteTransaction, loading, currency } = useTransactions();
+  const { transactions, accounts, deleteTransaction, bulkDeleteTransactions, loading, currency } = useTransactions();
   
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,11 +22,17 @@ export const Transactions = ({ onOpenAddTransaction }) => {
   const [sortKey, setSortKey] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc'); // 'desc' | 'asc'
 
+  // Multi-Select State
+  const [selectedTxIds, setSelectedTxIds] = useState([]);
+
   // Edit Transaction Modal State
   const [editingTransaction, setEditingTransaction] = useState(null);
 
-  // Delete Confirmation Modal State
+  // Single Delete Confirmation Modal State
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, description }
+  
+  // Bulk Delete Confirmation Modal State
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   // Extract unique category names
@@ -95,6 +101,24 @@ export const Transactions = ({ onOpenAddTransaction }) => {
     }
   });
 
+  // Select All / Deselect All handlers
+  const isAllSelected = sortedTransactions.length > 0 && sortedTransactions.every(tx => selectedTxIds.includes(tx.id));
+  const isSomeSelected = selectedTxIds.length > 0 && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedTxIds([]);
+    } else {
+      setSelectedTxIds(sortedTransactions.map(tx => tx.id));
+    }
+  };
+
+  const handleToggleSelectRow = (id) => {
+    setSelectedTxIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
   const toggleSort = (key) => {
     if (sortKey === key) {
       setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
@@ -113,12 +137,22 @@ export const Transactions = ({ onOpenAddTransaction }) => {
     setSortDirection('desc');
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmSingleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     await deleteTransaction(deleteTarget.id);
+    setSelectedTxIds(prev => prev.filter(id => id !== deleteTarget.id));
     setDeleting(false);
     setDeleteTarget(null);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    if (selectedTxIds.length === 0) return;
+    setDeleting(true);
+    await bulkDeleteTransactions(selectedTxIds);
+    setDeleting(false);
+    setSelectedTxIds([]);
+    setIsBulkDeleteModalOpen(false);
   };
 
   const isFilterActive = searchTerm || filterType !== 'all' || filterAccount !== 'all' || filterCategory !== 'all';
@@ -136,7 +170,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
             Transaction History
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Manage, edit, sort, and filter your personal ledger entries.
+            Manage, edit, bulk delete, sort, and filter your personal ledger entries.
           </p>
         </div>
         <button className="btn btn-primary" onClick={onOpenAddTransaction}>
@@ -144,6 +178,56 @@ export const Transactions = ({ onOpenAddTransaction }) => {
           <span>Add Transaction</span>
         </button>
       </div>
+
+      {/* Floating / Sticky Bulk Actions Toolbar */}
+      {selectedTxIds.length > 0 && (
+        <div className="glass-card" style={{
+          padding: '0.85rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'rgba(22, 27, 34, 0.95)',
+          border: '1px solid var(--accent-neon-pink)',
+          boxShadow: '0 0 20px rgba(236, 72, 153, 0.2)',
+          borderRadius: 'var(--radius-md)',
+          animation: 'fadeIn 0.2s ease-in-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span className="badge" style={{
+              backgroundColor: 'var(--accent-neon-pink-glow)',
+              color: 'var(--accent-neon-pink)',
+              border: '1px solid rgba(236, 72, 153, 0.4)',
+              fontSize: '0.85rem',
+              padding: '0.35rem 0.75rem'
+            }}>
+              {selectedTxIds.length} {selectedTxIds.length === 1 ? 'Entry' : 'Entries'} Selected
+            </span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Select actions to perform on highlighted rows.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setSelectedTxIds([])}
+              style={{ fontSize: '0.85rem', padding: '0.45rem 0.85rem' }}
+            >
+              <XCircle size={15} />
+              <span>Deselect All</span>
+            </button>
+
+            <button
+              className="btn btn-danger"
+              onClick={() => setIsBulkDeleteModalOpen(true)}
+              style={{ fontSize: '0.85rem', padding: '0.45rem 0.85rem' }}
+            >
+              <Trash2 size={15} />
+              <span>Bulk Delete ({selectedTxIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter & Sort Control Panel */}
       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 20 }}>
@@ -248,6 +332,17 @@ export const Transactions = ({ onOpenAddTransaction }) => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                  {/* Select All Checkbox Header Column */}
+                  <th style={{ padding: '1rem', width: '48px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={input => { if (input) input.indeterminate = isSomeSelected; }}
+                      onChange={handleToggleSelectAll}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent-neon-green)' }}
+                      title={isAllSelected ? "Deselect All Visible" : "Select All Visible"}
+                    />
+                  </th>
                   <th style={{ padding: '1rem', whiteSpace: 'nowrap' }}>Flow Type</th>
                   <th style={{ padding: '1rem' }}>Description</th>
                   <th style={{ padding: '1rem' }}>Category</th>
@@ -284,69 +379,89 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                 </tr>
               </thead>
               <tbody>
-                {sortedTransactions.map((tx) => (
-                  <tr key={tx.id} style={{ borderBottom: '1px solid rgba(48, 54, 61, 0.4)' }}>
-                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                      {tx.category === 'Account Transfer' ? (
-                        <span className="badge" style={{ backgroundColor: 'var(--accent-electric-blue-glow)', color: 'var(--accent-electric-blue)', border: '1px solid rgba(96, 165, 250, 0.3)' }}>
-                          <ArrowRightLeft size={14} /> Transfer
-                        </span>
-                      ) : tx.type === 'income' ? (
-                        <span className="badge badge-income">
-                          <ArrowUpRight size={14} /> Inflow
-                        </span>
-                      ) : (
-                        <span className="badge badge-expense">
-                          <ArrowDownRight size={14} /> Outflow
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {tx.description}
-                    </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
-                      {tx.category}
-                    </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
-                      {tx.account}
-                    </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {formatDate(tx.date)}
-                    </td>
-                    <td style={{
-                      padding: '1rem',
-                      textAlign: 'right',
-                      whiteSpace: 'nowrap',
-                      fontWeight: 700,
-                      color: tx.category === 'Account Transfer' ? 'var(--accent-electric-blue)' : (tx.type === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)')
-                    }}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, currency)}
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-                        {/* Edit Transaction Button */}
-                        <button
-                          onClick={() => setEditingTransaction(tx)}
-                          className="btn btn-secondary"
-                          style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
-                          title="Edit Transaction"
-                        >
-                          <Pencil size={14} />
-                        </button>
+                {sortedTransactions.map((tx) => {
+                  const isSelected = selectedTxIds.includes(tx.id);
+                  return (
+                    <tr 
+                      key={tx.id} 
+                      style={{ 
+                        borderBottom: '1px solid rgba(48, 54, 61, 0.4)',
+                        backgroundColor: isSelected ? 'rgba(0, 255, 135, 0.04)' : 'transparent',
+                        transition: 'background-color var(--transition-fast)'
+                      }}
+                    >
+                      {/* Row Checkbox Column */}
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectRow(tx.id)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent-neon-green)' }}
+                        />
+                      </td>
 
-                        {/* Delete Transaction Button */}
-                        <button
-                          onClick={() => setDeleteTarget({ id: tx.id, description: tx.description })}
-                          className="btn btn-danger"
-                          style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
-                          title="Delete Transaction"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                        {tx.category === 'Account Transfer' ? (
+                          <span className="badge" style={{ backgroundColor: 'var(--accent-electric-blue-glow)', color: 'var(--accent-electric-blue)', border: '1px solid rgba(96, 165, 250, 0.3)' }}>
+                            <ArrowRightLeft size={14} /> Transfer
+                          </span>
+                        ) : tx.type === 'income' ? (
+                          <span className="badge badge-income">
+                            <ArrowUpRight size={14} /> Inflow
+                          </span>
+                        ) : (
+                          <span className="badge badge-expense">
+                            <ArrowDownRight size={14} /> Outflow
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {tx.description}
+                      </td>
+                      <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                        {tx.category}
+                      </td>
+                      <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                        {tx.account}
+                      </td>
+                      <td style={{ padding: '1rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {formatDate(tx.date)}
+                      </td>
+                      <td style={{
+                        padding: '1rem',
+                        textAlign: 'right',
+                        whiteSpace: 'nowrap',
+                        fontWeight: 700,
+                        color: tx.category === 'Account Transfer' ? 'var(--accent-electric-blue)' : (tx.type === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)')
+                      }}>
+                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, currency)}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                          {/* Edit Transaction Button */}
+                          <button
+                            onClick={() => setEditingTransaction(tx)}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
+                            title="Edit Transaction"
+                          >
+                            <Pencil size={14} />
+                          </button>
+
+                          {/* Delete Transaction Button */}
+                          <button
+                            onClick={() => setDeleteTarget({ id: tx.id, description: tx.description })}
+                            className="btn btn-danger"
+                            style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
+                            title="Delete Transaction"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -360,14 +475,25 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         editingTransaction={editingTransaction}
       />
 
-      {/* Confirmation Modal for Transaction Delete */}
+      {/* Confirmation Modal for Single Transaction Delete */}
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={handleConfirmDelete}
+        onConfirm={handleConfirmSingleDelete}
         title="Delete Transaction?"
         message={`Are you sure you want to delete transaction "${deleteTarget?.description || 'Selected Transaction'}"? This action cannot be undone.`}
         confirmText="Yes, Delete Transaction"
+        loading={deleting}
+      />
+
+      {/* Confirmation Modal for Bulk Delete */}
+      <ConfirmModal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+        title="Bulk Delete Transactions?"
+        message={`Are you sure you want to delete ${selectedTxIds.length} selected ${selectedTxIds.length === 1 ? 'transaction' : 'transactions'}? This action cannot be undone.`}
+        confirmText={`Yes, Delete ${selectedTxIds.length} Entries`}
         loading={deleting}
       />
     </div>
