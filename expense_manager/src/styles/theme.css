@@ -276,6 +276,8 @@ body {
 /* Navbar Full-Width & Responsive Styles */
 .navbar-container {
   background-color: var(--bg-secondary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   padding: 0.85rem 2.5rem;
   display: flex;
@@ -283,11 +285,12 @@ body {
   justify-content: space-between;
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 100;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   gap: 0.75rem;
+  overflow: hidden;
 }
 
 .mobile-menu-btn {
@@ -331,15 +334,22 @@ body {
   height: 100vh;
   position: sticky;
   top: 0;
-  overflow-y: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
-  padding: 1.5rem 1rem;
+  padding: 1.25rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   z-index: 50;
   transition: transform var(--transition-normal);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-aside::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar-mobile-close {
