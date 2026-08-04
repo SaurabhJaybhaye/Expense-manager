@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { parseJSONFile, parseCSVFile, parseExcelFile, normalizeTransaction } from '../services/importEngine';
 import { scanForDuplicates } from '../services/duplicateDetector';
 import { useTransactions } from '../context/TransactionContext';
+import { useCategories } from '../context/CategoryContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { Upload, CheckCircle2, AlertCircle, ArrowRight, Copy, Code, FileUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const ImportData = () => {
-  const { importTransactions, transactions, currency } = useTransactions();
+  const { importTransactions, transactions, accounts, addAccount, currency } = useTransactions();
+  const { incomeCategories, expenseCategories, addCategory } = useCategories();
   const navigate = useNavigate();
 
   const [importMode, setImportMode] = useState('file'); // 'file' | 'json_text'
@@ -109,9 +111,49 @@ export const ImportData = () => {
     if (validRows.length === 0) return;
 
     setLoading(true);
+
+    // 1. Dynamic Category Auto-Creation for missing categories
+    const existingIncomeSet = new Set(incomeCategories.map(c => c.toLowerCase()));
+    const existingExpenseSet = new Set(expenseCategories.map(c => c.toLowerCase()));
+
+    validRows.forEach((row) => {
+      if (row.category && row.category !== 'Account Transfer') {
+        const cleanCat = row.category.trim();
+        const catLower = cleanCat.toLowerCase();
+        const isIncome = row.type === 'income';
+
+        if (isIncome && !existingIncomeSet.has(catLower)) {
+          addCategory(cleanCat, 'income');
+          existingIncomeSet.add(catLower);
+        } else if (!isIncome && !existingExpenseSet.has(catLower)) {
+          addCategory(cleanCat, 'expense');
+          existingExpenseSet.add(catLower);
+        }
+      }
+    });
+
+    // 2. Dynamic Account Auto-Creation for missing payment accounts
+    const existingAccountsSet = new Set(accounts.map(a => a.name.toLowerCase()));
+    validRows.forEach((row) => {
+      if (row.account) {
+        const cleanAcc = row.account.trim();
+        const accLower = cleanAcc.toLowerCase();
+        if (!existingAccountsSet.has(accLower)) {
+          addAccount({
+            name: cleanAcc,
+            type: 'bank',
+            balance: 0,
+            currency
+          });
+          existingAccountsSet.add(accLower);
+        }
+      }
+    });
+
+    // 3. Commit transactions to state & Cloud Firestore
     const count = await importTransactions(validRows);
     setLoading(false);
-    setSuccessMsg(`Successfully imported ${count} valid transactions into your ledger!`);
+    setSuccessMsg(`Successfully imported ${count} valid transactions and auto-created all new categories & accounts!`);
     setParsedRows([]);
     setFile(null);
     setJsonText('');
@@ -121,7 +163,7 @@ export const ImportData = () => {
   const duplicateCount = parsedRows.filter(r => r.isDuplicate).length;
   const invalidCount = parsedRows.filter(r => !r.isValid).length;
 
-  const jsonPlaceholder = `[\n  {\n    "date": "2026-08-03",\n    "amount": 5000,\n    "type": "expense",\n    "category": "Food & Dining",\n    "account": "Cash In Hand",\n    "description": "Team Dinner"\n  },\n  {\n    "date": "2026-08-03",\n    "amount": 10000,\n    "type": "Transfer",\n    "category": "Account Transfer",\n    "account": { "from": "HDFC Bank", "to": "Central Bank" },\n    "description": "Internal Bank Transfer"\n  }\n]`;
+  const jsonPlaceholder = `[\n  {\n    "date": "2026-08-03",\n    "amount": 5000,\n    "type": "expense",\n    "category": "Gaming & Esports",\n    "account": "Central Bank",\n    "description": "Steam Game Purchase"\n  },\n  {\n    "date": "2026-08-03",\n    "amount": 10000,\n    "type": "Transfer",\n    "category": "Account Transfer",\n    "account": { "from": "HDFC Bank", "to": "Central Bank" },\n    "description": "Internal Bank Transfer"\n  }\n]`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
