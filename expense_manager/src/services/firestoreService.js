@@ -91,6 +91,25 @@ export const removeTransaction = async (userId, transactionId) => {
 };
 
 /**
+ * Update an existing transaction directly in Cloud Firestore
+ */
+export const editTransactionInFirestore = async (userId, transactionId, updatedData) => {
+  if (isConfigured && db && transactionId) {
+    try {
+      const docRef = doc(db, 'transactions', transactionId);
+      await setDoc(docRef, {
+        ...updatedData,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      return true;
+    } catch (e) {
+      console.error('Firestore editTransactionInFirestore error:', e.message);
+    }
+  }
+  return false;
+};
+
+/**
  * Update transaction account references when an account is renamed
  */
 export const updateTransactionsAccountName = async (userId, oldName, newName) => {

@@ -7,7 +7,8 @@ import {
   batchCreateTransactions,
   fetchUserAccounts,
   saveUserAccounts,
-  updateTransactionsAccountName 
+  updateTransactionsAccountName,
+  editTransactionInFirestore 
 } from '../services/firestoreService';
 import { INITIAL_ACCOUNTS } from '../constants/accountTypes';
 
@@ -25,18 +26,13 @@ export const TransactionProvider = ({ children }) => {
     let isMounted = true;
 
     const loadUserData = async () => {
-      if (!currentUser) {
-        setTransactions([]);
-        setAccounts(INITIAL_ACCOUNTS);
-        setLoading(false);
-        return;
-      }
+      const userId = currentUser?.uid || 'local_default_user';
 
       setLoading(true);
       try {
         const [userTxList, userAccs] = await Promise.all([
-          fetchUserTransactions(currentUser.uid),
-          fetchUserAccounts(currentUser.uid)
+          fetchUserTransactions(userId),
+          fetchUserAccounts(userId)
         ]);
 
         if (isMounted) {
@@ -57,22 +53,29 @@ export const TransactionProvider = ({ children }) => {
   // Save accounts directly to Firestore
   const updateAndSaveAccounts = (newAccounts) => {
     setAccounts(newAccounts);
-    if (currentUser) {
-      saveUserAccounts(currentUser.uid, newAccounts);
-    }
+    const userId = currentUser?.uid || 'local_default_user';
+    saveUserAccounts(userId, newAccounts);
   };
 
   // Add transaction
   const addTransaction = async (txData) => {
-    if (!currentUser) return;
-    const newTx = await createTransaction(currentUser.uid, txData);
+    const userId = currentUser?.uid || 'local_default_user';
+    const newTx = await createTransaction(userId, txData);
     setTransactions((prev) => [newTx, ...prev]);
+  };
+
+  // Update existing transaction
+  const updateTransaction = async (updatedTx) => {
+    if (!updatedTx?.id) return;
+    const userId = currentUser?.uid || 'local_default_user';
+    setTransactions((prev) => prev.map(tx => tx.id === updatedTx.id ? { ...tx, ...updatedTx } : tx));
+    await editTransactionInFirestore(userId, updatedTx.id, updatedTx);
   };
 
   // Add Account-to-Account Transfer
   const addTransfer = async ({ fromAccount, toAccount, amount, date, description }) => {
-    if (!currentUser) return;
-    const transferOut = await createTransaction(currentUser.uid, {
+    const userId = currentUser?.uid || 'local_default_user';
+    const transferOut = await createTransaction(userId, {
       amount,
       type: 'expense',
       isTransfer: true,
@@ -82,7 +85,7 @@ export const TransactionProvider = ({ children }) => {
       description: `${description} (${fromAccount} → ${toAccount})`
     });
 
-    const transferIn = await createTransaction(currentUser.uid, {
+    const transferIn = await createTransaction(userId, {
       amount,
       type: 'income',
       isTransfer: true,
@@ -97,16 +100,16 @@ export const TransactionProvider = ({ children }) => {
 
   // Delete transaction
   const deleteTransaction = async (id) => {
-    if (!currentUser) return;
-    await removeTransaction(currentUser.uid, id);
+    const userId = currentUser?.uid || 'local_default_user';
+    await removeTransaction(userId, id);
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
   };
 
   // Batch import transactions
   const importTransactions = async (importedList) => {
-    if (!currentUser) return 0;
+    const userId = currentUser?.uid || 'local_default_user';
     const validItems = importedList.filter((tx) => tx.isValid);
-    const created = await batchCreateTransactions(currentUser.uid, validItems);
+    const created = await batchCreateTransactions(userId, validItems);
     setTransactions((prev) => [...created, ...prev]);
     return created.length;
   };
@@ -133,9 +136,8 @@ export const TransactionProvider = ({ children }) => {
         return tx;
       }));
 
-      if (currentUser) {
-        updateTransactionsAccountName(currentUser.uid, oldName, updatedAcc.name);
-      }
+      const userId = currentUser?.uid || 'local_default_user';
+      updateTransactionsAccountName(userId, oldName, updatedAcc.name);
     }
   };
 
@@ -167,6 +169,7 @@ export const TransactionProvider = ({ children }) => {
         totalExpenses,
         totalBalance,
         addTransaction,
+        updateTransaction,
         addTransfer,
         deleteTransaction,
         importTransactions,

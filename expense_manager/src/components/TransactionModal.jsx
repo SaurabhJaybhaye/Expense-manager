@@ -9,8 +9,8 @@ import { preventNegativeKey, sanitizePositiveAmount, validatePositiveAmount } fr
 import { predictCategory } from '../services/aiEngine';
 import { Sparkles, ArrowDownRight, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
 
-export const TransactionModal = ({ isOpen, onClose }) => {
-  const { addTransaction, addTransfer, accounts } = useTransactions();
+export const TransactionModal = ({ isOpen, onClose, editingTransaction = null }) => {
+  const { addTransaction, updateTransaction, addTransfer, accounts } = useTransactions();
   const { incomeCategories, expenseCategories, addCategory } = useCategories();
 
   // 3 Flow Sections: 'expense' (Outflow) | 'income' (Inflow) | 'transfer' (Account Transfer)
@@ -31,18 +31,47 @@ export const TransactionModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      setDate(getCurrentDateTimeISO());
-      const cats = section === 'income' ? incomeCategories : expenseCategories;
-      setCategory(section === 'transfer' ? 'Account Transfer' : cats[0] || '');
-      setAccount(accounts[0]?.name || 'Cash In Hand');
-      setFromAccount(accounts[0]?.name || 'Primary Bank Account');
-      setToAccount(accounts[1]?.name || accounts[0]?.name || 'Cash In Hand');
-      setAmount('');
-      setDescription('');
-      setError('');
-      setAiSuggestion(null);
+      if (editingTransaction) {
+        // Edit Mode Pre-population with robust Date formatting
+        const isTxTransfer = editingTransaction.isTransfer || editingTransaction.category === 'Account Transfer';
+        const initialSection = isTxTransfer ? 'transfer' : (editingTransaction.type === 'income' ? 'income' : 'expense');
+        
+        setSection(initialSection);
+        setAmount(String(editingTransaction.amount || ''));
+
+        let formattedDate = getCurrentDateTimeISO();
+        if (editingTransaction.date) {
+          const raw = String(editingTransaction.date).trim();
+          if (raw.includes('T')) {
+            formattedDate = raw.substring(0, 16);
+          } else if (raw.length === 10) {
+            formattedDate = `${raw}T12:00`;
+          }
+        }
+        setDate(formattedDate);
+
+        setCategory(editingTransaction.category || '');
+        setAccount(editingTransaction.account || accounts[0]?.name || 'Cash In Hand');
+        setFromAccount(editingTransaction.account || accounts[0]?.name || 'Primary Bank Account');
+        setToAccount(accounts[1]?.name || accounts[0]?.name || 'Cash In Hand');
+        setDescription(editingTransaction.description || '');
+        setError('');
+        setAiSuggestion(null);
+      } else {
+        // Create Mode Initialization
+        setDate(getCurrentDateTimeISO());
+        const cats = section === 'income' ? incomeCategories : expenseCategories;
+        setCategory(section === 'transfer' ? 'Account Transfer' : cats[0] || '');
+        setAccount(accounts[0]?.name || 'Cash In Hand');
+        setFromAccount(accounts[0]?.name || 'Primary Bank Account');
+        setToAccount(accounts[1]?.name || accounts[0]?.name || 'Cash In Hand');
+        setAmount('');
+        setDescription('');
+        setError('');
+        setAiSuggestion(null);
+      }
     }
-  }, [isOpen, section, accounts]);
+  }, [isOpen, editingTransaction, accounts]);
 
   const handleSectionSwitch = (newSection) => {
     setSection(newSection);
@@ -68,27 +97,26 @@ export const TransactionModal = ({ isOpen, onClose }) => {
     if (section !== 'transfer') {
       // AI Category Auto-Prediction
       const pred = predictCategory(val);
-      if (pred.category) {
-        setAiSuggestion(pred);
-        setCategory(pred.category);
-        if (pred.recommendedType && pred.recommendedType !== section) {
-          setSection(pred.recommendedType);
-        }
+      if (pred && pred.confidence > 0.5) {
+        setAiSuggestion(pred.category);
       } else {
         setAiSuggestion(null);
       }
     }
   };
 
-  const handleAmountChange = (e) => {
-    const val = sanitizePositiveAmount(e.target.value);
-    setAmount(val);
-    if (error) setError('');
+  const handleApplyAiSuggestion = () => {
+    if (aiSuggestion) {
+      setCategory(aiSuggestion);
+      addCategory(aiSuggestion, section === 'income' ? 'income' : 'expense');
+      setAiSuggestion(null);
+    }
   };
 
-  const handleCreateNewCategory = (newCatName) => {
+  const handleCategoryChange = (selectedVal) => {
+    setCategory(selectedVal);
     if (section !== 'transfer') {
-      addCategory(newCatName, section);
+      addCategory(selectedVal, section === 'income' ? 'income' : 'expense');
     }
   };
 
@@ -102,12 +130,24 @@ export const TransactionModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    if (!date) {
-      setError('Please select a valid date and time.');
+    const targetDate = date || (editingTransaction ? editingTransaction.date : getCurrentDateTimeISO());
+
+    if (editingTransaction) {
+      // Execute Edit Transaction Update
+      await updateTransaction({
+        id: editingTransaction.id,
+        amount: validation.amount,
+        type: section === 'transfer' ? (editingTransaction.type || 'expense') : section,
+        date: targetDate,
+        category: section === 'transfer' ? 'Account Transfer' : category,
+        account,
+        description: description.trim() || (section === 'income' ? 'Income Entry' : 'Expense Outflow')
+      });
+      onClose();
       return;
     }
 
-    // Handle Transfer Section
+    // Handle New Transfer Section Creation
     if (section === 'transfer') {
       if (fromAccount === toAccount) {
         setError('Source account (From) and Destination account (To) must be different.');
@@ -118,11 +158,11 @@ export const TransactionModal = ({ isOpen, onClose }) => {
         fromAccount,
         toAccount,
         amount: validation.amount,
-        date,
+        date: targetDate,
         description: description.trim() || 'Internal Account Transfer'
       });
     } else {
-      // Handle Outflow (Expense) or Inflow (Income) Sections
+      // Handle New Outflow (Expense) or Inflow (Income) Section Creation
       if (!category) {
         setError('Please select or create a category.');
         return;
@@ -131,212 +171,168 @@ export const TransactionModal = ({ isOpen, onClose }) => {
       await addTransaction({
         amount: validation.amount,
         type: section,
-        date,
+        date: targetDate,
         category,
         account,
         description: description.trim() || (section === 'income' ? 'Income Entry' : 'Expense Outflow')
       });
     }
 
-    setAmount('');
-    setDescription('');
     onClose();
   };
 
-  const accountOptions = accounts.map(acc => ({ value: acc.name, label: `${acc.name} (${acc.type})` }));
+  const accountOptions = accounts.map(acc => ({
+    value: acc.name,
+    label: `${acc.name} (${acc.type.replace('_', ' ')})`
+  }));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Record Manual Transaction">
-      {error && (
-        <div style={{
-          backgroundColor: 'rgba(239, 68, 68, 0.15)',
-          border: '1px solid rgba(239, 68, 68, 0.4)',
-          color: 'var(--color-danger)',
-          padding: '0.65rem 0.85rem',
-          borderRadius: 'var(--radius-sm)',
-          fontSize: '0.85rem',
-          marginBottom: '1rem'
-        }}>
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        {/* 3 Section Flow Switcher: Outflow | Inflow | Transfer */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '0.35rem',
-          backgroundColor: 'var(--bg-secondary)',
-          padding: '0.35rem',
-          borderRadius: 'var(--radius-sm)',
-          marginBottom: '1.25rem'
-        }}>
-          {/* Section 1: Outflow (Expense) */}
-          <button
-            type="button"
-            className="btn"
-            onClick={() => handleSectionSwitch('expense')}
-            style={{
-              fontSize: '0.8rem',
-              padding: '0.5rem 0.35rem',
-              backgroundColor: section === 'expense' ? 'var(--accent-neon-pink)' : 'transparent',
-              color: section === 'expense' ? '#fff' : 'var(--text-secondary)',
-              boxShadow: section === 'expense' ? '0 0 12px var(--accent-neon-pink-glow)' : 'none',
-              justifyContent: 'center'
-            }}
-          >
-            <ArrowDownRight size={14} />
-            <span>Outflow</span>
-          </button>
-
-          {/* Section 2: Inflow (Income) */}
-          <button
-            type="button"
-            className="btn"
-            onClick={() => handleSectionSwitch('income')}
-            style={{
-              fontSize: '0.8rem',
-              padding: '0.5rem 0.35rem',
-              backgroundColor: section === 'income' ? 'var(--accent-neon-green)' : 'transparent',
-              color: section === 'income' ? '#0b0e14' : 'var(--text-secondary)',
-              boxShadow: section === 'income' ? '0 0 12px var(--accent-neon-green-glow)' : 'none',
-              justifyContent: 'center'
-            }}
-          >
-            <ArrowUpRight size={14} />
-            <span>Inflow</span>
-          </button>
-
-          {/* Section 3: Transfer (Account Transfer) */}
-          <button
-            type="button"
-            className="btn"
-            onClick={() => handleSectionSwitch('transfer')}
-            style={{
-              fontSize: '0.8rem',
-              padding: '0.5rem 0.35rem',
-              backgroundColor: section === 'transfer' ? 'var(--accent-electric-blue)' : 'transparent',
-              color: section === 'transfer' ? '#0b0e14' : 'var(--text-secondary)',
-              boxShadow: section === 'transfer' ? '0 0 12px var(--accent-electric-blue-glow)' : 'none',
-              justifyContent: 'center'
-            }}
-          >
-            <ArrowRightLeft size={14} />
-            <span>Transfer</span>
-          </button>
-        </div>
-
-        {/* 1. Description / Note Input */}
-        <div className="form-group">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <label className="form-label">Description / Note</label>
-            {aiSuggestion && section !== 'transfer' && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--accent-neon-green)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Sparkles size={12} /> Auto-suggested "{aiSuggestion.category}"
-              </span>
-            )}
+    <Modal isOpen={isOpen} onClose={onClose} title={editingTransaction ? 'Edit Transaction Entry' : 'Record Manual Transaction'}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+        {error && (
+          <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'var(--color-danger)',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.85rem'
+          }}>
+            {error}
           </div>
-          <input
-            type="text"
-            placeholder={section === 'transfer' ? 'e.g. ATM cash withdrawal, Bank to Cash...' : 'e.g. Swiggy dinner, Uber cab, Netflix, Salary...'}
-            className="form-input"
-            value={description}
-            onChange={handleDescriptionChange}
-            autoFocus
-          />
-        </div>
+        )}
 
-        {/* 2. Category Field FIRST (Interchanged position with Amount) */}
-        <div className="form-group">
-          {section === 'transfer' ? (
-            <div>
-              <label className="form-label">Category</label>
-              <input
-                type="text"
-                className="form-input"
-                value="Account Transfer"
-                disabled
-                style={{ opacity: 0.75, cursor: 'not-allowed' }}
-              />
+        {/* 3 Flow Section Pills: Outflow | Inflow | Transfer */}
+        {!editingTransaction && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <label className="form-label">Flow Section</label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.5rem',
+              backgroundColor: 'var(--bg-secondary)',
+              padding: '0.35rem',
+              borderRadius: 'var(--radius-sm)'
+            }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleSectionSwitch('expense')}
+                style={{
+                  fontSize: '0.85rem',
+                  padding: '0.5rem',
+                  backgroundColor: section === 'expense' ? 'var(--bg-card)' : 'transparent',
+                  color: section === 'expense' ? 'var(--accent-neon-pink)' : 'var(--text-secondary)',
+                  border: section === 'expense' ? '1px solid var(--accent-neon-pink)' : '1px solid transparent'
+                }}
+              >
+                <ArrowDownRight size={15} />
+                <span>Outflow</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleSectionSwitch('income')}
+                style={{
+                  fontSize: '0.85rem',
+                  padding: '0.5rem',
+                  backgroundColor: section === 'income' ? 'var(--bg-card)' : 'transparent',
+                  color: section === 'income' ? 'var(--accent-neon-green)' : 'var(--text-secondary)',
+                  border: section === 'income' ? '1px solid var(--accent-neon-green)' : '1px solid transparent'
+                }}
+              >
+                <ArrowUpRight size={15} />
+                <span>Inflow</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleSectionSwitch('transfer')}
+                style={{
+                  fontSize: '0.85rem',
+                  padding: '0.5rem',
+                  backgroundColor: section === 'transfer' ? 'var(--bg-card)' : 'transparent',
+                  color: section === 'transfer' ? 'var(--accent-electric-blue)' : 'var(--text-secondary)',
+                  border: section === 'transfer' ? '1px solid var(--accent-electric-blue)' : '1px solid transparent'
+                }}
+              >
+                <ArrowRightLeft size={15} />
+                <span>Transfer</span>
+              </button>
             </div>
-          ) : (
-            <CreatableSelect
-              label="Category"
-              options={activeCategories}
-              value={category}
-              onChange={setCategory}
-              onCreateNew={handleCreateNewCategory}
-              placeholder="Search or create category..."
-            />
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* 3. Amount Field SECOND (Interchanged position with Category) */}
-        <div className="form-group">
-          <label className="form-label">Amount (INR ₹)</label>
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            placeholder="0.00"
-            className="form-input"
-            value={amount}
-            onKeyDown={preventNegativeKey}
-            onChange={handleAmountChange}
-            required
-          />
-        </div>
-
-        {/* 4. Account & Date Grid (For Transfer vs Normal Outflow/Inflow) */}
-        {section === 'transfer' ? (
+        {/* Dynamic Fields for Outflow or Inflow Sections */}
+        {section !== 'transfer' && (
           <>
-            {/* From (Source) & To (Destination) Account Grid for Transfer Section */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <CustomSelect
-                  label="From Account (Source)"
-                  options={accountOptions}
-                  value={fromAccount}
-                  onChange={setFromAccount}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <CustomSelect
-                  label="To Account (Destination)"
-                  options={accountOptions}
-                  value={toAccount}
-                  onChange={setToAccount}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Date & Time</label>
-              <input
-                type="datetime-local"
-                className="form-input"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
-          </>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Date & Time</label>
-              <input
-                type="datetime-local"
-                className="form-input"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
+            {/* POSITION 1: Category Field with Creatable Select */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <CreatableSelect
+                label={`Category (${section === 'income' ? 'Income Tag' : 'Expense Category'})`}
+                options={activeCategories}
+                value={category}
+                onChange={handleCategoryChange}
+                placeholder="Select or type new category..."
               />
             </div>
 
-            <div className="form-group">
+            {/* AI Category Auto-Suggestion Banner */}
+            {aiSuggestion && aiSuggestion !== category && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: 'var(--accent-neon-purple-glow)',
+                border: '1px solid var(--accent-neon-purple)',
+                padding: '0.5rem 0.75rem',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.8rem',
+                color: 'var(--accent-neon-purple)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Sparkles size={14} />
+                  <span>AI Suggested Category: <strong>{aiSuggestion}</strong></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplyAiSuggestion}
+                  style={{
+                    background: 'var(--accent-neon-purple)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '0.2rem 0.5rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Apply Tag
+                </button>
+              </div>
+            )}
+
+            {/* POSITION 2: Amount Field */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Amount (INR ₹)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                className="form-input"
+                value={amount}
+                onKeyDown={preventNegativeKey}
+                onChange={(e) => setAmount(sanitizePositiveAmount(e.target.value))}
+                required
+              />
+            </div>
+
+            {/* Payment Account */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <CustomSelect
                 label="Payment Account"
                 options={accountOptions}
@@ -344,23 +340,78 @@ export const TransactionModal = ({ isOpen, onClose }) => {
                 onChange={setAccount}
               />
             </div>
-          </div>
+          </>
         )}
 
-        {/* Actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+        {/* Dynamic Fields for Transfer Section */}
+        {section === 'transfer' && (
+          <>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <CustomSelect
+                label="From Account (Source Outflow)"
+                options={accountOptions}
+                value={fromAccount}
+                onChange={setFromAccount}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <CustomSelect
+                label="To Account (Destination Inflow)"
+                options={accountOptions}
+                value={toAccount}
+                onChange={setToAccount}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Transfer Amount (INR ₹)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                className="form-input"
+                value={amount}
+                onKeyDown={preventNegativeKey}
+                onChange={(e) => setAmount(sanitizePositiveAmount(e.target.value))}
+                required
+              />
+            </div>
+          </>
+        )}
+
+        {/* Date & Time Picker */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Date & Time</label>
+          <input
+            type="datetime-local"
+            className="form-input"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+        </div>
+
+        {/* Note / Description */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Description / Note (Optional)</label>
+          <input
+            type="text"
+            placeholder={section === 'transfer' ? 'Internal Account Transfer' : 'e.g. Starbucks Coffee, Amazon Order...'}
+            className="form-input"
+            value={description}
+            onChange={handleDescriptionChange}
+          />
+        </div>
+
+        {/* Form Actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{
-              backgroundColor: section === 'transfer' ? 'var(--accent-electric-blue)' : (section === 'income' ? 'var(--accent-neon-green)' : 'var(--accent-neon-pink)'),
-              color: section === 'expense' ? '#ffffff' : '#0b0e14'
-            }}
-          >
-            {section === 'transfer' ? 'Complete Transfer' : 'Save Transaction'}
+          <button type="submit" className="btn btn-primary">
+            {editingTransaction ? 'Save Changes' : (section === 'transfer' ? 'Execute Transfer' : 'Record Transaction')}
           </button>
         </div>
       </form>

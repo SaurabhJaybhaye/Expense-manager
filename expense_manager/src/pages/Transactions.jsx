@@ -5,7 +5,8 @@ import { formatDate } from '../utils/dateParser';
 import { CustomSelect } from '../components/CustomSelect';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { TransactionModal } from '../components/TransactionModal';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, Pencil, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
@@ -20,6 +21,9 @@ export const Transactions = ({ onOpenAddTransaction }) => {
   // Sorting States: 'date' | 'amount'
   const [sortKey, setSortKey] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc'); // 'desc' | 'asc'
+
+  // Edit Transaction Modal State
+  const [editingTransaction, setEditingTransaction] = useState(null);
 
   // Delete Confirmation Modal State
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, description }
@@ -132,7 +136,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
             Transaction History
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Manage, sort, and filter your personal ledger entries.
+            Manage, edit, sort, and filter your personal ledger entries.
           </p>
         </div>
         <button className="btn btn-primary" onClick={onOpenAddTransaction}>
@@ -319,14 +323,27 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                       {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, currency)}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <button
-                        onClick={() => setDeleteTarget({ id: tx.id, description: tx.description })}
-                        className="btn btn-danger"
-                        style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
-                        title="Delete Transaction"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                        {/* Edit Transaction Button */}
+                        <button
+                          onClick={() => setEditingTransaction(tx)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
+                          title="Edit Transaction"
+                        >
+                          <Pencil size={14} />
+                        </button>
+
+                        {/* Delete Transaction Button */}
+                        <button
+                          onClick={() => setDeleteTarget({ id: tx.id, description: tx.description })}
+                          className="btn btn-danger"
+                          style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
+                          title="Delete Transaction"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -335,6 +352,13 @@ export const Transactions = ({ onOpenAddTransaction }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Transaction Modal */}
+      <TransactionModal
+        isOpen={Boolean(editingTransaction)}
+        onClose={() => setEditingTransaction(null)}
+        editingTransaction={editingTransaction}
+      />
 
       {/* Confirmation Modal for Transaction Delete */}
       <ConfirmModal
