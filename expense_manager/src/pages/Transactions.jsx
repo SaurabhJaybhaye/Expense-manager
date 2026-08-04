@@ -336,10 +336,10 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                   <th style={{ padding: '1rem', width: '48px', textAlign: 'center' }}>
                     <input
                       type="checkbox"
+                      className="custom-checkbox"
                       checked={isAllSelected}
                       ref={input => { if (input) input.indeterminate = isSomeSelected; }}
                       onChange={handleToggleSelectAll}
-                      style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent-neon-green)' }}
                       title={isAllSelected ? "Deselect All Visible" : "Select All Visible"}
                     />
                   </th>
@@ -394,9 +394,9 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
                         <input
                           type="checkbox"
+                          className="custom-checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(tx.id)}
-                          style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent-neon-green)' }}
                         />
                       </td>
 

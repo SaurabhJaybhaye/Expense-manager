@@ -146,6 +146,67 @@ body {
   cursor: not-allowed;
 }
 
+/* Custom Gen Z Theme Checkbox Styling */
+input[type="checkbox"].custom-checkbox,
+.custom-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all var(--transition-fast);
+  outline: none;
+  vertical-align: middle;
+}
+
+input[type="checkbox"].custom-checkbox:hover,
+.custom-checkbox:hover {
+  border-color: var(--accent-neon-green);
+  background-color: var(--bg-card-hover);
+  box-shadow: 0 0 8px var(--accent-neon-green-glow);
+}
+
+input[type="checkbox"].custom-checkbox:checked,
+.custom-checkbox:checked {
+  background-color: var(--accent-neon-green);
+  border-color: var(--accent-neon-green);
+  box-shadow: 0 0 12px var(--accent-neon-green-glow);
+}
+
+input[type="checkbox"].custom-checkbox:checked::after,
+.custom-checkbox:checked::after {
+  content: '';
+  width: 4px;
+  height: 9px;
+  border: solid #0b0e14;
+  border-width: 0 2.2px 2.2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+input[type="checkbox"].custom-checkbox:indeterminate,
+.custom-checkbox:indeterminate {
+  background-color: var(--accent-neon-green-glow);
+  border-color: var(--accent-neon-green);
+}
+
+input[type="checkbox"].custom-checkbox:indeterminate::after,
+.custom-checkbox:indeterminate::after {
+  content: '';
+  width: 8px;
+  height: 2px;
+  background-color: var(--accent-neon-green);
+  border-radius: 1px;
+}
+
 /* Standard Buttons */
 .btn {
   display: inline-flex;
