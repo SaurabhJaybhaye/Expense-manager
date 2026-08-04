@@ -3,11 +3,13 @@ import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { formatDate } from '../utils/dateParser';
 import { CustomSelect } from '../components/CustomSelect';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Search, PlusCircle, ArrowUpRight, ArrowDownRight, Trash2, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 
 export const Transactions = ({ onOpenAddTransaction }) => {
-  const { transactions, accounts, deleteTransaction, currency } = useTransactions();
+  const { transactions, accounts, deleteTransaction, loading, currency } = useTransactions();
   
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +20,10 @@ export const Transactions = ({ onOpenAddTransaction }) => {
   // Sorting States: 'date' | 'amount'
   const [sortKey, setSortKey] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc'); // 'desc' | 'asc'
+
+  // Delete Confirmation Modal State
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, description }
+  const [deleting, setDeleting] = useState(false);
 
   // Extract unique category names
   const allCategoryNames = Array.from(new Set([
@@ -103,7 +109,19 @@ export const Transactions = ({ onOpenAddTransaction }) => {
     setSortDirection('desc');
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteTransaction(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
+  };
+
   const isFilterActive = searchTerm || filterType !== 'all' || filterAccount !== 'all' || filterCategory !== 'all';
+
+  if (loading) {
+    return <LoadingSpinner fullPage message="Fetching transaction ledger from Cloud Firestore..." />;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -123,7 +141,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         </button>
       </div>
 
-      {/* Filter & Sort Control Panel with zIndex 20 for overlaying lower table card */}
+      {/* Filter & Sort Control Panel */}
       <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 20 }}>
         {/* Top Row: Search & Flow Type Pills */}
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -215,7 +233,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
         </div>
       </div>
 
-      {/* Main Transactions Table with zIndex 1 */}
+      {/* Main Transactions Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'visible', position: 'relative', zIndex: 1 }}>
         {sortedTransactions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
@@ -302,7 +320,7 @@ export const Transactions = ({ onOpenAddTransaction }) => {
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <button
-                        onClick={() => deleteTransaction(tx.id)}
+                        onClick={() => setDeleteTarget({ id: tx.id, description: tx.description })}
                         className="btn btn-danger"
                         style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }}
                         title="Delete Transaction"
@@ -317,6 +335,17 @@ export const Transactions = ({ onOpenAddTransaction }) => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal for Transaction Delete */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Transaction?"
+        message={`Are you sure you want to delete transaction "${deleteTarget?.description || 'Selected Transaction'}"? This action cannot be undone.`}
+        confirmText="Yes, Delete Transaction"
+        loading={deleting}
+      />
     </div>
   );
 };

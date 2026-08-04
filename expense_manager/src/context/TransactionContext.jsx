@@ -6,7 +6,8 @@ import {
   removeTransaction, 
   batchCreateTransactions,
   fetchUserAccounts,
-  saveUserAccounts 
+  saveUserAccounts,
+  updateTransactionsAccountName 
 } from '../services/firestoreService';
 import { INITIAL_ACCOUNTS } from '../constants/accountTypes';
 
@@ -110,15 +111,32 @@ export const TransactionProvider = ({ children }) => {
     return created.length;
   };
 
-  // Account Management CRUD
+  // Account Management CRUD with Renaming Cascade
   const addAccount = (newAcc) => {
     const updated = [...accounts, { ...newAcc, id: `acc_${Date.now()}` }];
     updateAndSaveAccounts(updated);
   };
 
   const updateAccount = (updatedAcc) => {
-    const updated = accounts.map(acc => acc.id === updatedAcc.id ? { ...acc, ...updatedAcc } : acc);
-    updateAndSaveAccounts(updated);
+    const oldAccount = accounts.find(acc => acc.id === updatedAcc.id);
+    const oldName = oldAccount ? oldAccount.name : null;
+
+    const updatedAccs = accounts.map(acc => acc.id === updatedAcc.id ? { ...acc, ...updatedAcc } : acc);
+    updateAndSaveAccounts(updatedAccs);
+
+    // If the account name was changed, update all associated transactions in state & Firestore!
+    if (oldName && updatedAcc.name && oldName !== updatedAcc.name) {
+      setTransactions(prev => prev.map(tx => {
+        if (tx.account === oldName) {
+          return { ...tx, account: updatedAcc.name };
+        }
+        return tx;
+      }));
+
+      if (currentUser) {
+        updateTransactionsAccountName(currentUser.uid, oldName, updatedAcc.name);
+      }
+    }
   };
 
   const deleteAccount = (accountId) => {

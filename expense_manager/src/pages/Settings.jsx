@@ -2,65 +2,71 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTransactions } from '../context/TransactionContext';
 import { useCategories } from '../context/CategoryContext';
-import { CURRENCY_MAP } from '../utils/currencyFormatter';
-import { exportToCSV, exportToJSON } from '../services/exportEngine';
-import { User, Globe, Download, Check, ShieldCheck, Sparkles, FileSpreadsheet, FileJson, Tags, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { Modal } from '../components/Modal';
+import { User, Mail, DollarSign, Download, Upload, Trash2, Tags, Plus, Pencil, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 export const Settings = () => {
-  const { currentUser } = useAuth();
-  const { currency, setCurrency, transactions } = useTransactions();
-  const { incomeCategories, expenseCategories, addCategory, updateCategory, deleteCategory } = useCategories();
-
-  const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
-  const [isSaved, setIsSaved] = useState(false);
-  const [exportMessage, setExportMessage] = useState('');
+  const { currentUser, logout } = useAuth();
+  const { currency, setCurrency, transactions, importTransactions } = useTransactions();
+  const { incomeCategories, expenseCategories, customCategories, addCategory, updateCategory, deleteCategory } = useCategories();
 
   // Category Manager States
-  const [activeCategoryType, setActiveCategoryType] = useState('expense');
-  const [newCatName, setNewCatName] = useState('');
+  const [activeCategoryType, setActiveCategoryType] = useState('expense'); // 'income' | 'expense'
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [isAddCatModalOpen, setIsAddCatModalOpen] = useState(false);
   const [isEditCatModalOpen, setIsEditCatModalOpen] = useState(false);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [renamedCategoryName, setRenamedCategoryName] = useState('');
 
-  const handleProfileSave = (e) => {
-    e.preventDefault();
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+  // Delete Category Confirmation Modal State
+  const [deleteCatTarget, setDeleteCatTarget] = useState(null); // { name, type }
+
+  const currencies = [
+    { code: 'INR', symbol: '₹', label: 'Indian Rupee (INR ₹)' },
+    { code: 'USD', symbol: '$', label: 'US Dollar (USD $)' },
+    { code: 'EUR', symbol: '€', label: 'Euro (EUR €)' },
+    { code: 'GBP', symbol: '£', label: 'British Pound (GBP £)' }
+  ];
+
+  const handleExportData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `expense_ledger_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
-  const handleExportCSV = () => {
-    const success = exportToCSV(transactions);
-    if (success) {
-      setExportMessage('CSV ledger file downloaded successfully!');
-      setTimeout(() => setExportMessage(''), 3000);
+  const handleImportBackup = (e) => {
+    const fileReader = new FileReader();
+    if (e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
+      fileReader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.map((item, idx) => ({ ...item, isValid: true }));
+            importTransactions(valid);
+            alert(`Successfully restored ${valid.length} transactions from backup!`);
+          }
+        } catch (err) {
+          alert("Invalid backup JSON file.");
+        }
+      };
     }
   };
 
-  const handleExportJSON = () => {
-    const success = exportToJSON(transactions);
-    if (success) {
-      setExportMessage('JSON ledger backup file downloaded successfully!');
-      setTimeout(() => setExportMessage(''), 3000);
-    }
-  };
-
-  const handleCreateCategory = (e) => {
+  const handleAddCatSubmit = (e) => {
     e.preventDefault();
-    if (!newCatName.trim()) return;
-    addCategory(newCatName.trim(), activeCategoryType);
-    setNewCatName('');
+    if (!newCategoryName.trim()) return;
+    addCategory(newCategoryName.trim(), activeCategoryType);
+    setNewCategoryName('');
     setIsAddCatModalOpen(false);
   };
 
-  const handleOpenEditCat = (catName) => {
-    setEditingCategoryName(catName);
-    setRenamedCategoryName(catName);
-    setIsEditCatModalOpen(true);
-  };
-
-  const handleSaveRenameCat = (e) => {
+  const handleEditCatSubmit = (e) => {
     e.preventDefault();
     if (!renamedCategoryName.trim() || !editingCategoryName) return;
     updateCategory(editingCategoryName, renamedCategoryName.trim(), activeCategoryType);
@@ -69,10 +75,10 @@ export const Settings = () => {
     setIsEditCatModalOpen(false);
   };
 
-  const handleDeleteCat = (catName) => {
-    if (window.confirm(`Delete category "${catName}"?`)) {
-      deleteCategory(catName, activeCategoryType);
-    }
+  const handleConfirmDeleteCat = () => {
+    if (!deleteCatTarget) return;
+    deleteCategory(deleteCatTarget.name, deleteCatTarget.type);
+    setDeleteCatTarget(null);
   };
 
   const currentCategoryList = activeCategoryType === 'income' ? incomeCategories : expenseCategories;
@@ -98,194 +104,89 @@ export const Settings = () => {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Category Management Hub
               </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Create, edit/rename, or delete Income and Expense transaction categories.
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Create, rename, or remove custom income & expense category tags.
               </p>
             </div>
           </div>
 
-          <button className="btn btn-primary" onClick={() => { setNewCatName(''); setIsAddCatModalOpen(true); }}>
-            <PlusCircle size={18} />
-            <span>Add Custom Category</span>
+          <button className="btn btn-primary" onClick={() => { setNewCategoryName(''); setIsAddCatModalOpen(true); }}>
+            <Plus size={16} />
+            <span>Add Category</span>
           </button>
         </div>
 
-        {/* Category Type Switcher (Income vs Expense) */}
-        <div style={{
-          display: 'inline-flex',
-          gap: '0.5rem',
-          backgroundColor: 'var(--bg-secondary)',
-          padding: '0.35rem',
-          borderRadius: 'var(--radius-sm)',
-          marginBottom: '1.25rem'
-        }}>
+        {/* Category Type Switcher Pills */}
+        <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: 'var(--bg-secondary)', padding: '0.35rem', borderRadius: 'var(--radius-sm)', width: 'fit-content', marginBottom: '1.25rem' }}>
           <button
-            type="button"
             className="btn"
             onClick={() => setActiveCategoryType('expense')}
             style={{
-              backgroundColor: activeCategoryType === 'expense' ? 'var(--accent-neon-pink)' : 'transparent',
-              color: activeCategoryType === 'expense' ? '#fff' : 'var(--text-secondary)',
-              boxShadow: activeCategoryType === 'expense' ? '0 0 12px var(--accent-neon-pink-glow)' : 'none',
-              padding: '0.4rem 1rem'
+              fontSize: '0.85rem',
+              backgroundColor: activeCategoryType === 'expense' ? 'var(--bg-card)' : 'transparent',
+              color: activeCategoryType === 'expense' ? 'var(--accent-neon-pink)' : 'var(--text-secondary)',
+              border: activeCategoryType === 'expense' ? '1px solid var(--accent-neon-pink)' : '1px solid transparent'
             }}
           >
-            Expense Categories ({expenseCategories.length})
+            <ArrowDownRight size={14} />
+            <span>Expense Categories ({expenseCategories.length})</span>
           </button>
+
           <button
-            type="button"
             className="btn"
             onClick={() => setActiveCategoryType('income')}
             style={{
-              backgroundColor: activeCategoryType === 'income' ? 'var(--accent-neon-green)' : 'transparent',
-              color: activeCategoryType === 'income' ? '#0b0e14' : 'var(--text-secondary)',
-              boxShadow: activeCategoryType === 'income' ? '0 0 12px var(--accent-neon-green-glow)' : 'none',
-              padding: '0.4rem 1rem'
+              fontSize: '0.85rem',
+              backgroundColor: activeCategoryType === 'income' ? 'var(--bg-card)' : 'transparent',
+              color: activeCategoryType === 'income' ? 'var(--accent-neon-green)' : 'var(--text-secondary)',
+              border: activeCategoryType === 'income' ? '1px solid var(--accent-neon-green)' : '1px solid transparent'
             }}
           >
-            Income Categories ({incomeCategories.length})
+            <ArrowUpRight size={14} />
+            <span>Income Categories ({incomeCategories.length})</span>
           </button>
         </div>
 
-        {/* Category Chips Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.85rem' }}>
-          {currentCategoryList.map((catName) => (
-            <div
-              key={catName}
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '0.65rem 0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.9rem',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <span style={{ fontWeight: 600 }}>{catName}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <button
-                  onClick={() => handleOpenEditCat(catName)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }}
-                  title="Rename Category"
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  onClick={() => handleDeleteCat(catName)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.2rem' }}
-                  title="Delete Category"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Profile Section */}
-      <div className="glass-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <User size={22} color="var(--accent-neon-green)" />
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            User Profile & Identity
-          </h3>
-        </div>
-
-        <form onSubmit={handleProfileSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px' }}>
-          <div className="form-group">
-            <label className="form-label">Display Name</label>
-            <input
-              type="text"
-              className="form-input"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. Alex Rivers"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
-              type="email"
-              className="form-input"
-              value={currentUser?.email || 'user@expensemanager.app'}
-              disabled
-              style={{ opacity: 0.6, cursor: 'not-allowed' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button type="submit" className="btn btn-primary">
-              Save Profile
-            </button>
-            {isSaved && (
-              <span style={{ fontSize: '0.85rem', color: 'var(--accent-neon-green)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <Check size={16} /> Saved!
-              </span>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* Multi-Currency Switcher Section */}
-      <div className="glass-card glass-card-glow-green">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <Globe size={22} color="var(--accent-electric-blue)" />
-          <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Display Currency Switcher
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Select your default currency. All balances, charts, and metrics update instantly.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid-3">
-          {Object.keys(CURRENCY_MAP).map((code) => {
-            const item = CURRENCY_MAP[code];
-            const isSelected = currency === code;
+        {/* Category Items Pills Grid */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
+          {currentCategoryList.map((cat) => {
+            const isCustom = (customCategories[activeCategoryType] || []).includes(cat);
             return (
               <div
-                key={code}
-                onClick={() => setCurrency(code)}
+                key={cat}
                 style={{
-                  padding: '1.25rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: isSelected ? 'var(--bg-card)' : 'var(--bg-secondary)',
-                  border: isSelected ? '2px solid var(--accent-neon-green)' : '1px solid var(--border-color)',
-                  boxShadow: isSelected ? '0 0 16px var(--accent-neon-green-glow)' : 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  transition: 'all var(--transition-fast)'
+                  gap: '0.5rem',
+                  padding: '0.5rem 0.85rem',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: isCustom ? '1px solid var(--accent-neon-purple)' : '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.85rem',
+                  color: 'var(--text-primary)'
                 }}
               >
-                <div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: isSelected ? 'var(--accent-neon-green)' : 'var(--text-primary)' }}>
-                    {code} ({item.symbol})
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                    {item.label}
-                  </div>
-                </div>
-                {isSelected && (
-                  <div style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--accent-neon-green)',
-                    color: '#0b0e14',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Check size={18} strokeWidth={3} />
+                <span>{cat}</span>
+                {isCustom && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
+                    <button
+                      onClick={() => {
+                        setEditingCategoryName(cat);
+                        setRenamedCategoryName(cat);
+                        setIsEditCatModalOpen(true);
+                      }}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.15rem' }}
+                      title="Rename Category"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => setDeleteCatTarget({ name: cat, type: activeCategoryType })}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.15rem' }}
+                      title="Delete Custom Category"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 )}
               </div>
@@ -294,63 +195,129 @@ export const Settings = () => {
         </div>
       </div>
 
-      {/* Ledger Data Export Section */}
-      <div className="glass-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <Download size={22} color="var(--accent-neon-purple)" />
-          <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Ledger Data Export Engine
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Download your complete financial records in CSV spreadsheet or JSON backup formats.
+      {/* User Profile Card */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <User size={22} color="var(--accent-electric-blue)" />
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            User Account Profile
+          </h3>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Display Name</span>
+            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+              {currentUser?.displayName || 'Active Ledger User'}
+            </p>
+          </div>
+
+          <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered Email</span>
+            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Mail size={16} color="var(--accent-electric-blue)" />
+              <span>{currentUser?.email || 'Guest User'}</span>
             </p>
           </div>
         </div>
 
-        {exportMessage && (
-          <div style={{
-            backgroundColor: 'var(--accent-neon-green-glow)',
-            border: '1px solid var(--accent-neon-green)',
-            color: 'var(--accent-neon-green)',
-            padding: '0.65rem 0.85rem',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.85rem',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <Check size={16} /> {exportMessage}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={handleExportCSV}>
-            <FileSpreadsheet size={18} />
-            <span>Export to CSV Spreadsheet</span>
-          </button>
-
-          <button className="btn btn-secondary" onClick={handleExportJSON}>
-            <FileJson size={18} />
-            <span>Export to JSON Backup</span>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <button className="btn btn-danger" onClick={logout}>
+            Sign Out Account
           </button>
         </div>
       </div>
 
+      {/* Currency Display Settings */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <DollarSign size={22} color="var(--accent-neon-green)" />
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Primary Currency Unit
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Select your base currency for ledger formatting and chart displays.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          {currencies.map((curr) => (
+            <div
+              key={curr.code}
+              onClick={() => setCurrency(curr.code)}
+              style={{
+                padding: '1rem',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: currency === curr.code ? 'var(--accent-neon-green-glow)' : 'var(--bg-secondary)',
+                border: currency === curr.code ? '1px solid var(--accent-neon-green)' : '1px solid var(--border-color)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all var(--transition-fast)'
+              }}
+            >
+              <div>
+                <span style={{ fontWeight: 700, color: currency === curr.code ? 'var(--accent-neon-green)' : 'var(--text-primary)' }}>
+                  {curr.code} ({curr.symbol})
+                </span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  {curr.label}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Data Backup & Export Section */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Download size={22} color="var(--accent-electric-blue)" />
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Ledger Backup & Export
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Export complete transaction history or restore from a JSON backup file.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={handleExportData}>
+            <Download size={16} />
+            <span>Export Ledger Backup (.JSON)</span>
+          </button>
+
+          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+            <Upload size={16} />
+            <span>Restore Backup File</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportBackup}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
+      </div>
+
       {/* Add Custom Category Modal */}
-      <Modal isOpen={isAddCatModalOpen} onClose={() => setIsAddCatModalOpen(false)} title={`Add ${activeCategoryType === 'income' ? 'Income' : 'Expense'} Category`}>
-        <form onSubmit={handleCreateCategory}>
+      <Modal isOpen={isAddCatModalOpen} onClose={() => setIsAddCatModalOpen(false)} title={`Add Custom ${activeCategoryType.toUpperCase()} Category`}>
+        <form onSubmit={handleAddCatSubmit}>
           <div className="form-group">
             <label className="form-label">Category Name</label>
             <input
               type="text"
-              placeholder="e.g. Subscriptions, Gaming, Freelance Royalty..."
+              placeholder="e.g. Freelance Gigs, Crypto Trading, Tech Subscriptions..."
               className="form-input"
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              required
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
               autoFocus
+              required
             />
           </div>
 
@@ -365,9 +332,9 @@ export const Settings = () => {
         </form>
       </Modal>
 
-      {/* Edit Category Modal */}
-      <Modal isOpen={isEditCatModalOpen} onClose={() => setIsEditCatModalOpen(false)} title="Rename Category">
-        <form onSubmit={handleSaveRenameCat}>
+      {/* Edit Custom Category Modal */}
+      <Modal isOpen={isEditCatModalOpen} onClose={() => setIsEditCatModalOpen(false)} title="Rename Custom Category">
+        <form onSubmit={handleEditCatSubmit}>
           <div className="form-group">
             <label className="form-label">Category Name</label>
             <input
@@ -375,8 +342,8 @@ export const Settings = () => {
               className="form-input"
               value={renamedCategoryName}
               onChange={(e) => setRenamedCategoryName(e.target.value)}
-              required
               autoFocus
+              required
             />
           </div>
 
@@ -390,6 +357,16 @@ export const Settings = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Confirmation Modal for Custom Category Delete */}
+      <ConfirmModal
+        isOpen={Boolean(deleteCatTarget)}
+        onClose={() => setDeleteCatTarget(null)}
+        onConfirm={handleConfirmDeleteCat}
+        title="Delete Custom Category?"
+        message={`Are you sure you want to delete category "${deleteCatTarget?.name || 'Selected Category'}"? Existing transactions with this category tag will remain saved.`}
+        confirmText="Yes, Delete Category"
+      />
     </div>
   );
 };

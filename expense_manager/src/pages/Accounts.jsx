@@ -4,13 +4,19 @@ import { formatCurrency } from '../utils/currencyFormatter';
 import { Landmark, Banknote, CreditCard, PiggyBank, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { CustomSelect } from '../components/CustomSelect';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { preventNegativeKey, sanitizePositiveAmount } from '../utils/validators';
 
 export const Accounts = () => {
-  const { accounts, addAccount, updateAccount, deleteAccount, transactions, currency } = useTransactions();
+  const { accounts, addAccount, updateAccount, deleteAccount, transactions, loading, currency } = useTransactions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState(null);
+
+  // Delete Confirmation Modal State
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleting, setDeleting] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -37,7 +43,7 @@ export const Accounts = () => {
     e.preventDefault();
     if (!name || balance === '') return;
     addAccount({
-      name,
+      name: name.trim(),
       type,
       balance: parseFloat(balance) || 0,
       currency
@@ -60,7 +66,7 @@ export const Accounts = () => {
     if (!name || balance === '' || !editingAccountId) return;
     updateAccount({
       id: editingAccountId,
-      name,
+      name: name.trim(),
       type,
       balance: parseFloat(balance) || 0,
       currency
@@ -71,11 +77,17 @@ export const Accounts = () => {
     setIsEditModalOpen(false);
   };
 
-  const handleDeleteAccount = (acc) => {
-    if (window.confirm(`Are you sure you want to delete account "${acc.name}"?`)) {
-      deleteAccount(acc.id);
-    }
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteAccount(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
   };
+
+  if (loading) {
+    return <LoadingSpinner fullPage message="Fetching asset accounts from Cloud Firestore..." />;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -100,8 +112,8 @@ export const Accounts = () => {
 
       <div className="grid-3">
         {accounts.map((acc) => {
-          // Calculate live total activity on this account
-          const accTx = transactions.filter(t => t.account?.toLowerCase() === acc.name.toLowerCase());
+          // Calculate live total activity on this account (case-insensitive & trimmed)
+          const accTx = transactions.filter(t => t.account?.trim().toLowerCase() === acc.name.trim().toLowerCase());
           const txInflow = accTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0);
           const txOutflow = accTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0);
           const computedBalance = (acc.balance || 0) + txInflow - txOutflow;
@@ -138,7 +150,7 @@ export const Accounts = () => {
                     <Pencil size={16} />
                   </button>
                   <button
-                    onClick={() => handleDeleteAccount(acc)}
+                    onClick={() => setDeleteTarget({ id: acc.id, name: acc.name })}
                     style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
                     title="Delete Account"
                   >
@@ -269,6 +281,17 @@ export const Accounts = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Confirmation Modal for Account Delete */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Asset Account?"
+        message={`Are you sure you want to delete account "${deleteTarget?.name || 'Selected Account'}"? Historical transactions linked to this account will remain saved in your ledger.`}
+        confirmText="Yes, Delete Account"
+        loading={deleting}
+      />
     </div>
   );
 };

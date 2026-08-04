@@ -7,6 +7,7 @@ import { BudgetProvider } from './context/BudgetContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { TransactionModal } from './components/TransactionModal';
+import { LoadingSpinner } from './components/LoadingSpinner';
 import './styles/theme.css';
 
 // Performance Code-Splitting with React.lazy
@@ -20,18 +21,7 @@ const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login }
 const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
 
 const PageLoadingFallback = () => (
-  <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
-    <div style={{
-      width: '32px',
-      height: '32px',
-      border: '3px solid var(--border-color)',
-      borderTopColor: 'var(--accent-neon-green)',
-      borderRadius: '50%',
-      margin: '0 auto 1rem',
-      animation: 'spin 0.8s linear infinite'
-    }} />
-    <span>Loading AI modules...</span>
-  </div>
+  <LoadingSpinner fullPage message="Loading financial ledger modules..." />
 );
 
 const ProtectedLayout = () => {

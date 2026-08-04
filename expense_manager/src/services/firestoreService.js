@@ -91,6 +91,29 @@ export const removeTransaction = async (userId, transactionId) => {
 };
 
 /**
+ * Update transaction account references when an account is renamed
+ */
+export const updateTransactionsAccountName = async (userId, oldName, newName) => {
+  if (!userId || !isConfigured || !db || !oldName || !newName || oldName === newName) return;
+
+  try {
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', userId),
+      where('account', '==', oldName)
+    );
+    const querySnapshot = await getDocs(q);
+    const updatePromises = [];
+    querySnapshot.forEach((docSnap) => {
+      updatePromises.push(setDoc(doc(db, 'transactions', docSnap.id), { account: newName }, { merge: true }));
+    });
+    await Promise.all(updatePromises);
+  } catch (e) {
+    console.error('Firestore updateTransactionsAccountName error:', e.message);
+  }
+};
+
+/**
  * Fetch User Accounts directly from Cloud Firestore
  */
 export const fetchUserAccounts = async (userId) => {
