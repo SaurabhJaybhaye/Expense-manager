@@ -114,6 +114,19 @@ export const TransactionProvider = ({ children }) => {
     setTransactions((prev) => prev.filter((tx) => !transactionIds.includes(tx.id)));
   };
 
+  // Cascade Delete all transactions matching a specific category
+  const deleteTransactionsByCategory = async (categoryName) => {
+    if (!categoryName) return 0;
+    const targetIds = transactions
+      .filter(tx => tx.category?.toLowerCase() === categoryName.toLowerCase())
+      .map(tx => tx.id);
+
+    if (targetIds.length > 0) {
+      await bulkDeleteTransactions(targetIds);
+    }
+    return targetIds.length;
+  };
+
   // Batch import transactions
   const importTransactions = async (importedList) => {
     const userId = currentUser?.uid || 'local_default_user';
@@ -182,6 +195,7 @@ export const TransactionProvider = ({ children }) => {
         addTransfer,
         deleteTransaction,
         bulkDeleteTransactions,
+        deleteTransactionsByCategory,
         importTransactions,
         addAccount,
         updateAccount,

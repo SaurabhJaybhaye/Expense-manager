@@ -7,7 +7,8 @@ const CategoryContext = createContext(null);
 
 const INITIAL_CUSTOM_CATEGORIES = {
   income: [],
-  expense: []
+  expense: [],
+  deletedDefaults: []
 };
 
 export const CategoryProvider = ({ children }) => {
@@ -24,7 +25,11 @@ export const CategoryProvider = ({ children }) => {
       }
       const data = await fetchUserCategories(currentUser.uid);
       if (isMounted && data) {
-        setCustomCategories(data);
+        setCustomCategories({
+          income: data.income || [],
+          expense: data.expense || [],
+          deletedDefaults: data.deletedDefaults || []
+        });
       }
     };
     loadCategories();
@@ -34,14 +39,14 @@ export const CategoryProvider = ({ children }) => {
   // Helper to update and save categories to Firestore
   const updateAndSaveCategories = (newCategories) => {
     setCustomCategories(newCategories);
-    if (currentUser) {
-      saveUserCategories(currentUser.uid, newCategories);
-    }
+    const userId = currentUser?.uid || 'local_default_user';
+    saveUserCategories(userId, newCategories);
   };
 
-  // Combine default category names with custom categories
-  const defaultIncomeNames = DEFAULT_CATEGORIES.INCOME.map(c => c.name);
-  const defaultExpenseNames = DEFAULT_CATEGORIES.EXPENSE.map(c => c.name);
+  // Combine default category names with custom categories, excluding deleted default tags
+  const deletedDefaults = customCategories.deletedDefaults || [];
+  const defaultIncomeNames = DEFAULT_CATEGORIES.INCOME.map(c => c.name).filter(name => !deletedDefaults.includes(name));
+  const defaultExpenseNames = DEFAULT_CATEGORIES.EXPENSE.map(c => c.name).filter(name => !deletedDefaults.includes(name));
 
   const incomeCategories = Array.from(new Set([...defaultIncomeNames, ...(customCategories.income || [])]));
   const expenseCategories = Array.from(new Set([...defaultExpenseNames, ...(customCategories.expense || [])]));
@@ -51,12 +56,17 @@ export const CategoryProvider = ({ children }) => {
     const cleanName = name.trim();
     if (!cleanName) return;
 
+    // If it was previously in deletedDefaults, remove it from deletedDefaults
+    const currentDeleted = customCategories.deletedDefaults || [];
+    const updatedDeleted = currentDeleted.filter(item => item !== cleanName);
+
     const targetList = customCategories[type] || [];
-    if (targetList.includes(cleanName)) return;
+    if (targetList.includes(cleanName) && !currentDeleted.includes(cleanName)) return;
 
     const updated = {
       ...customCategories,
-      [type]: [...targetList, cleanName]
+      deletedDefaults: updatedDeleted,
+      [type]: Array.from(new Set([...targetList, cleanName]))
     };
     updateAndSaveCategories(updated);
   };
@@ -77,8 +87,14 @@ export const CategoryProvider = ({ children }) => {
   const deleteCategory = (name, type = 'expense') => {
     if (!name) return;
     const targetList = customCategories[type] || [];
+    const currentDeleted = customCategories.deletedDefaults || [];
+    
+    // Add to deletedDefaults if it's a default category tag
+    const updatedDeleted = Array.from(new Set([...currentDeleted, name]));
+
     const updated = {
       ...customCategories,
+      deletedDefaults: updatedDeleted,
       [type]: targetList.filter((item) => item !== name)
     };
     updateAndSaveCategories(updated);

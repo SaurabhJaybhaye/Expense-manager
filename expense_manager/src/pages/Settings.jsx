@@ -4,11 +4,11 @@ import { useTransactions } from '../context/TransactionContext';
 import { useCategories } from '../context/CategoryContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Modal } from '../components/Modal';
-import { User, Mail, DollarSign, Download, Upload, Trash2, Tags, Plus, Pencil, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { User, Mail, DollarSign, Download, Upload, Trash2, Tags, Plus, Pencil, ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
 
 export const Settings = () => {
   const { currentUser, logout } = useAuth();
-  const { currency, setCurrency, transactions, importTransactions } = useTransactions();
+  const { currency, setCurrency, transactions, importTransactions, deleteTransactionsByCategory } = useTransactions();
   const { incomeCategories, expenseCategories, customCategories, addCategory, updateCategory, deleteCategory } = useCategories();
 
   // Category Manager States
@@ -20,7 +20,8 @@ export const Settings = () => {
   const [renamedCategoryName, setRenamedCategoryName] = useState('');
 
   // Delete Category Confirmation Modal State
-  const [deleteCatTarget, setDeleteCatTarget] = useState(null); // { name, type }
+  const [deleteCatTarget, setDeleteCatTarget] = useState(null); // { name, type, affectedCount }
+  const [deletingCat, setDeletingCat] = useState(false);
 
   const currencies = [
     { code: 'INR', symbol: '₹', label: 'Indian Rupee (INR ₹)' },
@@ -75,9 +76,16 @@ export const Settings = () => {
     setIsEditCatModalOpen(false);
   };
 
-  const handleConfirmDeleteCat = () => {
+  const handleConfirmDeleteCat = async () => {
     if (!deleteCatTarget) return;
+    setDeletingCat(true);
+    
+    // Cascade Delete: Delete all transactions belonging to this category!
+    await deleteTransactionsByCategory(deleteCatTarget.name);
+    // Delete Category from Category Settings
     deleteCategory(deleteCatTarget.name, deleteCatTarget.type);
+    
+    setDeletingCat(false);
     setDeleteCatTarget(null);
   };
 
@@ -151,6 +159,8 @@ export const Settings = () => {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
           {currentCategoryList.map((cat) => {
             const isCustom = (customCategories[activeCategoryType] || []).includes(cat);
+            const affectedCount = transactions.filter(t => t.category?.toLowerCase() === cat.toLowerCase()).length;
+
             return (
               <div
                 key={cat}
@@ -167,8 +177,21 @@ export const Settings = () => {
                 }}
               >
                 <span>{cat}</span>
-                {isCustom && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
+                {affectedCount > 0 && (
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+                    color: 'var(--accent-neon-pink)',
+                    padding: '0.1rem 0.4rem',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(236, 72, 153, 0.3)'
+                  }}>
+                    {affectedCount} {affectedCount === 1 ? 'record' : 'records'}
+                  </span>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
+                  {isCustom && (
                     <button
                       onClick={() => {
                         setEditingCategoryName(cat);
@@ -180,15 +203,15 @@ export const Settings = () => {
                     >
                       <Pencil size={13} />
                     </button>
-                    <button
-                      onClick={() => setDeleteCatTarget({ name: cat, type: activeCategoryType })}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.15rem' }}
-                      title="Delete Custom Category"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                )}
+                  )}
+                  <button
+                    onClick={() => setDeleteCatTarget({ name: cat, type: activeCategoryType, affectedCount })}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.15rem' }}
+                    title="Delete Category Tag"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -221,151 +244,155 @@ export const Settings = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-          <button className="btn btn-danger" onClick={logout}>
-            Sign Out Account
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
+          <button className="btn btn-secondary" onClick={logout}>
+            Sign Out Session
           </button>
         </div>
       </div>
 
-      {/* Currency Display Settings */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <DollarSign size={22} color="var(--accent-neon-green)" />
-          <div>
+      {/* Currency Preferences & Ledger Data Backup */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        {/* Currency Display Settings */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <DollarSign size={22} color="var(--accent-neon-green)" />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Primary Currency Unit
+              Currency Display Unit
             </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Select your base currency for ledger formatting and chart displays.
-            </p>
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Select your preferred global currency symbol for financial summaries and cards.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {currencies.map((c) => (
+              <label
+                key={c.code}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: currency === c.code ? '1px solid var(--accent-neon-green)' : '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer'
+                }}
+              >
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.label}</span>
+                <input
+                  type="radio"
+                  name="currency"
+                  value={c.code}
+                  checked={currency === c.code}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  style={{ accentColor: 'var(--accent-neon-green)' }}
+                />
+              </label>
+            ))}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          {currencies.map((curr) => (
-            <div
-              key={curr.code}
-              onClick={() => setCurrency(curr.code)}
-              style={{
-                padding: '1rem',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: currency === curr.code ? 'var(--accent-neon-green-glow)' : 'var(--bg-secondary)',
-                border: currency === curr.code ? '1px solid var(--accent-neon-green)' : '1px solid var(--border-color)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              <div>
-                <span style={{ fontWeight: 700, color: currency === curr.code ? 'var(--accent-neon-green)' : 'var(--text-primary)' }}>
-                  {curr.code} ({curr.symbol})
-                </span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                  {curr.label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Data Backup & Export Section */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Download size={22} color="var(--accent-electric-blue)" />
-          <div>
+        {/* Data Backup & Restore */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Download size={22} color="var(--accent-electric-blue)" />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Ledger Backup & Export
+              Ledger Backup & Migration
             </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Export complete transaction history or restore from a JSON backup file.
-            </p>
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Export your entire transaction ledger to JSON or restore historical data.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
+            <button className="btn btn-secondary" onClick={handleExportData} style={{ justifyContent: 'center' }}>
+              <Download size={16} />
+              <span>Export Ledger JSON Backup</span>
+            </button>
+
+            <label className="btn btn-secondary" style={{ justifyContent: 'center', cursor: 'pointer', margin: 0 }}>
+              <Upload size={16} />
+              <span>Restore Ledger Backup JSON</span>
+              <input type="file" accept=".json" onChange={handleImportBackup} style={{ display: 'none' }} />
+            </label>
           </div>
         </div>
-
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={handleExportData}>
-            <Download size={16} />
-            <span>Export Ledger Backup (.JSON)</span>
-          </button>
-
-          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-            <Upload size={16} />
-            <span>Restore Backup File</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportBackup}
-              style={{ display: 'none' }}
-            />
-          </label>
-        </div>
       </div>
 
-      {/* Add Custom Category Modal */}
-      <Modal isOpen={isAddCatModalOpen} onClose={() => setIsAddCatModalOpen(false)} title={`Add Custom ${activeCategoryType.toUpperCase()} Category`}>
-        <form onSubmit={handleAddCatSubmit}>
-          <div className="form-group">
+      {/* Modal: Add Category */}
+      <Modal isOpen={isAddCatModalOpen} onClose={() => setIsAddCatModalOpen(false)} title={`Create ${activeCategoryType === 'income' ? 'Income Tag' : 'Expense Category'}`}>
+        <form onSubmit={handleAddCatSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Category Name</label>
             <input
               type="text"
-              placeholder="e.g. Freelance Gigs, Crypto Trading, Tech Subscriptions..."
+              placeholder="e.g. Crypto Investments, SaaS Subscriptions..."
               className="form-input"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              autoFocus
               required
+              autoFocus
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button type="button" className="btn btn-secondary" onClick={() => setIsAddCatModalOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              Create Category
+              Create Tag
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Edit Custom Category Modal */}
+      {/* Modal: Edit Category Name */}
       <Modal isOpen={isEditCatModalOpen} onClose={() => setIsEditCatModalOpen(false)} title="Rename Custom Category">
-        <form onSubmit={handleEditCatSubmit}>
-          <div className="form-group">
+        <form onSubmit={handleEditCatSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Category Name</label>
             <input
               type="text"
               className="form-input"
               value={renamedCategoryName}
               onChange={(e) => setRenamedCategoryName(e.target.value)}
-              autoFocus
               required
+              autoFocus
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button type="button" className="btn btn-secondary" onClick={() => setIsEditCatModalOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              Save Category Name
+              Save Changes
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Confirmation Modal for Custom Category Delete */}
+      {/* Confirmation Modal for Delete Category with Record Warning */}
       <ConfirmModal
         isOpen={Boolean(deleteCatTarget)}
         onClose={() => setDeleteCatTarget(null)}
         onConfirm={handleConfirmDeleteCat}
-        title="Delete Custom Category?"
-        message={`Are you sure you want to delete category "${deleteCatTarget?.name || 'Selected Category'}"? Existing transactions with this category tag will remain saved.`}
-        confirmText="Yes, Delete Category"
+        title={`Delete Category "${deleteCatTarget?.name}"?`}
+        message={
+          deleteCatTarget?.affectedCount > 0 
+            ? `Are you sure you want to delete category "${deleteCatTarget?.name}"? WARNING: This action will permanently delete ${deleteCatTarget?.affectedCount} associated ${deleteCatTarget?.affectedCount === 1 ? 'transaction record' : 'transaction records'} from your ledger and Cloud Firestore. This action cannot be undone.`
+            : `Are you sure you want to delete category "${deleteCatTarget?.name}"? This action cannot be undone.`
+        }
+        confirmText={
+          deleteCatTarget?.affectedCount > 0
+            ? `Yes, Delete Tag & ${deleteCatTarget?.affectedCount} ${deleteCatTarget?.affectedCount === 1 ? 'Record' : 'Records'}`
+            : 'Yes, Delete Category Tag'
+        }
+        loading={deletingCat}
       />
     </div>
   );
