@@ -9,6 +9,7 @@ import {
   getDocs, 
   setDoc,
   getDoc,
+  writeBatch,
   serverTimestamp 
 } from 'firebase/firestore';
 import { INITIAL_ACCOUNTS } from '../constants/accountTypes';
@@ -24,7 +25,9 @@ export const fetchUserTransactions = async (userId) => {
     const querySnapshot = await getDocs(q);
     const list = [];
     querySnapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() });
+      const cleanData = { ...(docSnap.data() || {}) };
+      delete cleanData.id;
+      list.push({ ...cleanData, id: docSnap.id });
     });
     // Sort newest first by date/createdAt
     return list.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
@@ -38,8 +41,11 @@ export const fetchUserTransactions = async (userId) => {
  * Create a new transaction directly in Cloud Firestore
  */
 export const createTransaction = async (userId, txData) => {
+  const cleanTxData = { ...(txData || {}) };
+  delete cleanTxData.id;
+
   const payload = {
-    ...txData,
+    ...cleanTxData,
     userId: userId || 'anonymous',
     createdAt: new Date().toISOString()
   };
@@ -50,13 +56,13 @@ export const createTransaction = async (userId, txData) => {
         ...payload,
         createdAt: serverTimestamp()
       });
-      return { id: docRef.id, ...payload };
+      return { ...payload, id: docRef.id };
     } catch (e) {
       console.error('Firestore createTransaction error:', e.message);
     }
   }
 
-  return { id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, ...payload };
+  return { ...payload, id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 4)}` };
 };
 
 /**
@@ -85,23 +91,40 @@ export const removeTransaction = async (userId, transactionId) => {
       return true;
     } catch (e) {
       console.error('Firestore removeTransaction error:', e.message);
+      return false;
     }
   }
   return false;
 };
 
 /**
- * Batch delete transactions directly from Cloud Firestore
+ * Batch delete transactions directly from Cloud Firestore using writeBatch
  */
 export const batchRemoveTransactions = async (userId, transactionIds) => {
   if (!transactionIds || transactionIds.length === 0) return true;
-  try {
-    await Promise.all(transactionIds.map(id => removeTransaction(userId, id)));
-    return true;
-  } catch (e) {
-    console.error('Firestore batchRemoveTransactions error:', e.message);
-    return false;
+  if (isConfigured && db) {
+    try {
+      const batch = writeBatch(db);
+      transactionIds.forEach(id => {
+        if (id) {
+          const docRef = doc(db, 'transactions', id);
+          batch.delete(docRef);
+        }
+      });
+      await batch.commit();
+      return true;
+    } catch (e) {
+      console.error('Firestore batchRemoveTransactions error:', e.message);
+      try {
+        await Promise.all(transactionIds.map(id => removeTransaction(userId, id)));
+        return true;
+      } catch (err) {
+        console.error('Fallback batch remove error:', err.message);
+        return false;
+      }
+    }
   }
+  return false;
 };
 
 /**
@@ -110,9 +133,11 @@ export const batchRemoveTransactions = async (userId, transactionIds) => {
 export const editTransactionInFirestore = async (userId, transactionId, updatedData) => {
   if (isConfigured && db && transactionId) {
     try {
+      const cleanData = { ...(updatedData || {}) };
+      delete cleanData.id;
       const docRef = doc(db, 'transactions', transactionId);
       await setDoc(docRef, {
-        ...updatedData,
+        ...cleanData,
         updatedAt: serverTimestamp()
       }, { merge: true });
       return true;
@@ -143,6 +168,29 @@ export const updateTransactionsAccountName = async (userId, oldName, newName) =>
     await Promise.all(updatePromises);
   } catch (e) {
     console.error('Firestore updateTransactionsAccountName error:', e.message);
+  }
+};
+
+/**
+ * Update transaction category references when a category is renamed
+ */
+export const updateTransactionsCategoryName = async (userId, oldName, newName) => {
+  if (!userId || !isConfigured || !db || !oldName || !newName || oldName === newName) return;
+
+  try {
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', userId),
+      where('category', '==', oldName)
+    );
+    const querySnapshot = await getDocs(q);
+    const updatePromises = [];
+    querySnapshot.forEach((docSnap) => {
+      updatePromises.push(setDoc(doc(db, 'transactions', docSnap.id), { category: newName }, { merge: true }));
+    });
+    await Promise.all(updatePromises);
+  } catch (e) {
+    console.error('Firestore updateTransactionsCategoryName error:', e.message);
   }
 };
 

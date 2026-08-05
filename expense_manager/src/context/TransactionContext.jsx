@@ -9,6 +9,7 @@ import {
   fetchUserAccounts,
   saveUserAccounts,
   updateTransactionsAccountName,
+  updateTransactionsCategoryName,
   editTransactionInFirestore 
 } from '../services/firestoreService';
 import { INITIAL_ACCOUNTS } from '../constants/accountTypes';
@@ -127,6 +128,20 @@ export const TransactionProvider = ({ children }) => {
     return targetIds.length;
   };
 
+  // Cascade Category Renaming across all transactions
+  const renameCategoryTransactions = (oldName, newName) => {
+    if (!oldName || !newName || oldName === newName) return;
+    setTransactions(prev => prev.map(tx => {
+      if (tx.category === oldName) {
+        return { ...tx, category: newName };
+      }
+      return tx;
+    }));
+
+    const userId = currentUser?.uid || 'local_default_user';
+    updateTransactionsCategoryName(userId, oldName, newName);
+  };
+
   // Batch import transactions
   const importTransactions = async (importedList) => {
     const userId = currentUser?.uid || 'local_default_user';
@@ -196,6 +211,7 @@ export const TransactionProvider = ({ children }) => {
         deleteTransaction,
         bulkDeleteTransactions,
         deleteTransactionsByCategory,
+        renameCategoryTransactions,
         importTransactions,
         addAccount,
         updateAccount,

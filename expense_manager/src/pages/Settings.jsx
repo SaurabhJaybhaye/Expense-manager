@@ -8,7 +8,7 @@ import { User, Mail, DollarSign, Download, Upload, Trash2, Tags, Plus, Pencil, A
 
 export const Settings = () => {
   const { currentUser, logout } = useAuth();
-  const { currency, setCurrency, transactions, importTransactions, deleteTransactionsByCategory } = useTransactions();
+  const { currency, setCurrency, transactions, importTransactions, deleteTransactionsByCategory, renameCategoryTransactions } = useTransactions();
   const { incomeCategories, expenseCategories, customCategories, addCategory, updateCategory, deleteCategory } = useCategories();
 
   // Category Manager States
@@ -69,8 +69,14 @@ export const Settings = () => {
 
   const handleEditCatSubmit = (e) => {
     e.preventDefault();
-    if (!renamedCategoryName.trim() || !editingCategoryName) return;
-    updateCategory(editingCategoryName, renamedCategoryName.trim(), activeCategoryType);
+    const cleanRenamed = renamedCategoryName.trim();
+    if (!cleanRenamed || !editingCategoryName) return;
+
+    // Update Category settings tag
+    updateCategory(editingCategoryName, cleanRenamed, activeCategoryType);
+    // Cascade Category Renaming to all matching historical transactions!
+    renameCategoryTransactions(editingCategoryName, cleanRenamed);
+
     setEditingCategoryName('');
     setRenamedCategoryName('');
     setIsEditCatModalOpen(false);
@@ -191,19 +197,20 @@ export const Settings = () => {
                   </span>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
-                  {isCustom && (
-                    <button
-                      onClick={() => {
-                        setEditingCategoryName(cat);
-                        setRenamedCategoryName(cat);
-                        setIsEditCatModalOpen(true);
-                      }}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.15rem' }}
-                      title="Rename Category"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                  )}
+                  {/* Edit Category Pencil Button for All Categories */}
+                  <button
+                    onClick={() => {
+                      setEditingCategoryName(cat);
+                      setRenamedCategoryName(cat);
+                      setIsEditCatModalOpen(true);
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.15rem' }}
+                    title="Edit Category Name"
+                  >
+                    <Pencil size={13} />
+                  </button>
+
+                  {/* Delete Category Trash Button */}
                   <button
                     onClick={() => setDeleteCatTarget({ name: cat, type: activeCategoryType, affectedCount })}
                     style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.15rem' }}
@@ -351,10 +358,10 @@ export const Settings = () => {
       </Modal>
 
       {/* Modal: Edit Category Name */}
-      <Modal isOpen={isEditCatModalOpen} onClose={() => setIsEditCatModalOpen(false)} title="Rename Custom Category">
+      <Modal isOpen={isEditCatModalOpen} onClose={() => setIsEditCatModalOpen(false)} title="Rename Category Tag">
         <form onSubmit={handleEditCatSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Category Name</label>
+            <label className="form-label">New Category Name</label>
             <input
               type="text"
               className="form-input"

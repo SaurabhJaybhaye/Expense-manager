@@ -74,12 +74,30 @@ export const CategoryProvider = ({ children }) => {
   const updateCategory = (oldName, newName, type = 'expense') => {
     if (!oldName || !newName) return;
     const cleanNew = newName.trim();
-    if (!cleanNew) return;
+    if (!cleanNew || oldName === cleanNew) return;
 
     const targetList = customCategories[type] || [];
+    const currentDeleted = customCategories.deletedDefaults || [];
+
+    // Check if oldName is a default category tag
+    const isDefault = DEFAULT_CATEGORIES.INCOME.some(c => c.name === oldName) || DEFAULT_CATEGORIES.EXPENSE.some(c => c.name === oldName);
+    
+    let updatedDeleted = currentDeleted;
+    if (isDefault) {
+      // Hide the old default category name
+      updatedDeleted = Array.from(new Set([...currentDeleted, oldName]));
+    }
+
+    // Update or append the renamed tag in customCategories
+    const hasInCustom = targetList.includes(oldName);
+    const newCustomList = hasInCustom
+      ? targetList.map((item) => (item === oldName ? cleanNew : item))
+      : Array.from(new Set([...targetList, cleanNew]));
+
     const updated = {
       ...customCategories,
-      [type]: targetList.map((item) => (item === oldName ? cleanNew : item))
+      deletedDefaults: updatedDeleted,
+      [type]: newCustomList
     };
     updateAndSaveCategories(updated);
   };
