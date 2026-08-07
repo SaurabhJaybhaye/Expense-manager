@@ -178,11 +178,16 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
       <div className="grid-2">
         {/* Category Breakdown Doughnut Chart */}
         <div className="glass-card glass-card-glow-purple">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
-            <PieIcon size={20} color="var(--accent-neon-purple)" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Category Breakdown
-            </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <PieIcon size={20} color="var(--accent-neon-purple)" />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Category Breakdown
+              </h3>
+            </div>
+            <Link to="/analytics" style={{ fontSize: '0.8rem', color: 'var(--accent-neon-purple)', fontWeight: 600, textDecoration: 'none' }}>
+              Full Category Analysis →
+            </Link>
           </div>
           <CategoryPieChart transactions={filteredTransactions} />
         </div>

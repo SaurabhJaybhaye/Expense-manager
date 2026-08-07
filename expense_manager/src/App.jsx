@@ -12,6 +12,7 @@ import './styles/theme.css';
 
 // Performance Code-Splitting with React.lazy
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Analytics = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
 const Transactions = lazy(() => import('./pages/Transactions').then(m => ({ default: m.Transactions })));
 const Accounts = lazy(() => import('./pages/Accounts').then(m => ({ default: m.Accounts })));
 const Budgets = lazy(() => import('./pages/Budgets').then(m => ({ default: m.Budgets })));
@@ -49,6 +50,7 @@ const ProtectedLayout = () => {
           <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
               <Route path="/" element={<Dashboard onOpenAddTransaction={() => setIsModalOpen(true)} />} />
+              <Route path="/analytics" element={<Analytics />} />
               <Route path="/transactions" element={<Transactions onOpenAddTransaction={() => setIsModalOpen(true)} />} />
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/budgets" element={<Budgets />} />

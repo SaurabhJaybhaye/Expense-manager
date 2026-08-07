@@ -1,10 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Landmark, FileSpreadsheet, Target, Settings as SettingsIcon, ShieldCheck, X } from 'lucide-react';
+import { LayoutDashboard, PieChart, Receipt, Landmark, FileSpreadsheet, Target, Settings as SettingsIcon, ShieldCheck, X } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { label: 'Category Analytics', path: '/analytics', icon: PieChart },
     { label: 'Transactions', path: '/transactions', icon: Receipt },
     { label: 'Accounts', path: '/accounts', icon: Landmark },
     { label: 'Smart Budgets', path: '/budgets', icon: Target },
