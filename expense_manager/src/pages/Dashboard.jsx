@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { formatDate } from '../utils/dateParser';
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Trash2, FileSpreadsheet, ArrowRightLeft, PieChart as PieIcon, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Trash2, FileSpreadsheet, ArrowRightLeft, PieChart as PieIcon, BarChart3, ListOrdered } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CategoryPieChart } from '../components/CategoryPieChart';
+import { CategoryAmountsList } from '../components/CategoryAmountsList';
 import { CashFlowChart } from '../components/CashFlowChart';
 import { DateRangeFilter } from '../components/DateRangeFilter';
 import { TransferModal } from '../components/TransferModal';
@@ -174,15 +175,15 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
       {/* AI Financial Insights & Health Score Widget */}
       <AiInsightsWidget />
 
-      {/* Interactive Charts Row */}
+      {/* Interactive Analytics & Chart Grid */}
       <div className="grid-2">
-        {/* Category Breakdown Doughnut Chart */}
+        {/* Section 1: Category Distribution (Pie Chart) */}
         <div className="glass-card glass-card-glow-purple">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <PieIcon size={20} color="var(--accent-neon-purple)" />
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Category Breakdown
+                Category Distribution (Pie Chart)
               </h3>
             </div>
             <Link to="/analytics" style={{ fontSize: '0.8rem', color: 'var(--accent-neon-purple)', fontWeight: 600, textDecoration: 'none' }}>
@@ -192,16 +193,27 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* Cash Flow Line & Bar Chart */}
-        <div className="glass-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-            <BarChart3 size={20} color="var(--accent-electric-blue)" />
+        {/* Section 2: Category Amounts Section */}
+        <div className="glass-card glass-card-glow-green">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+            <ListOrdered size={20} color="var(--accent-neon-green)" />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Cash Flow Trends
+              Category Amounts Breakdown
             </h3>
           </div>
-          <CashFlowChart transactions={filteredTransactions} />
+          <CategoryAmountsList transactions={filteredTransactions} />
         </div>
+      </div>
+
+      {/* Cash Flow Line & Bar Chart */}
+      <div className="glass-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+          <BarChart3 size={20} color="var(--accent-electric-blue)" />
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Cash Flow Trends
+          </h3>
+        </div>
+        <CashFlowChart transactions={filteredTransactions} />
       </div>
 
       {/* Recent Activity Table */}

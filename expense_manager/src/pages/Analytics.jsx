@@ -3,9 +3,10 @@ import { useTransactions } from '../context/TransactionContext';
 import { formatCurrency } from '../utils/currencyFormatter';
 import { formatDate } from '../utils/dateParser';
 import { CategoryPieChart } from '../components/CategoryPieChart';
+import { CategoryAmountsList } from '../components/CategoryAmountsList';
 import { CashFlowChart } from '../components/CashFlowChart';
 import { DateRangeFilter } from '../components/DateRangeFilter';
-import { PieChart as PieIcon, BarChart3, TrendingDown, Layers, DollarSign, Award, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Search } from 'lucide-react';
+import { PieChart as PieIcon, BarChart3, TrendingDown, Layers, DollarSign, Award, ArrowUpRight, ArrowDownRight, ArrowRightLeft, Search, ListOrdered } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const NEON_COLORS = [
@@ -209,41 +210,55 @@ export const Analytics = () => {
         </div>
       </div>
 
-      {/* Main Charts View Grid */}
+      {/* Separate Sections Grid */}
       <div className="grid-2">
-        {/* Dedicated Category Breakdown Card */}
+        {/* Section 1: Pure Category Pie Chart Card */}
         <div className="glass-card glass-card-glow-purple">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <PieIcon size={22} color="var(--accent-neon-purple)" />
-              <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                  Category Breakdown Chart
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Interactive doughnut chart displaying amounts & percentage distribution
-                </p>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+            <PieIcon size={22} color="var(--accent-neon-purple)" />
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Category Distribution (Pie Chart)
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Visual doughnut chart displaying spending proportion by category
+              </p>
             </div>
           </div>
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* Cash Flow Trends Chart */}
-        <div className="glass-card">
+        {/* Section 2: Category Amounts Section */}
+        <div className="glass-card glass-card-glow-green">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
-            <BarChart3 size={22} color="var(--accent-electric-blue)" />
+            <ListOrdered size={22} color="var(--accent-neon-green)" />
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Outflow & Cash Flow Trends
+                Category Amounts Breakdown
               </h3>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Temporal trends for selected date range
+                Prominently visible expense amounts, percentage share, and progress bars
               </p>
             </div>
           </div>
-          <CashFlowChart transactions={filteredTransactions} />
+          <CategoryAmountsList transactions={filteredTransactions} />
         </div>
+      </div>
+
+      {/* Cash Flow Trends Chart */}
+      <div className="glass-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+          <BarChart3 size={22} color="var(--accent-electric-blue)" />
+          <div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              Outflow & Cash Flow Trends
+            </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Temporal trends for selected date range
+            </p>
+          </div>
+        </div>
+        <CashFlowChart transactions={filteredTransactions} />
       </div>
 
       {/* Comprehensive Category Amounts Analysis Table */}
