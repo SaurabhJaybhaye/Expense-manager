@@ -210,9 +210,9 @@ export const Analytics = () => {
         </div>
       </div>
 
-      {/* Separate Sections Grid */}
+      {/* Side-by-Side Charts Grid: Category Distribution & Cash Flow Trends */}
       <div className="grid-2">
-        {/* Section 1: Pure Category Pie Chart Card */}
+        {/* Category Distribution (Pie Chart) */}
         <div className="glass-card glass-card-glow-purple">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
             <PieIcon size={22} color="var(--accent-neon-purple)" />
@@ -228,37 +228,37 @@ export const Analytics = () => {
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* Section 2: Category Amounts Section */}
-        <div className="glass-card glass-card-glow-green">
+        {/* Cash Flow Trends Chart */}
+        <div className="glass-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
-            <ListOrdered size={22} color="var(--accent-neon-green)" />
+            <BarChart3 size={22} color="var(--accent-electric-blue)" />
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Category Amounts Breakdown
+                Outflow & Cash Flow Trends
               </h3>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Prominently visible expense amounts, percentage share, and progress bars
+                Temporal trends for selected date range
               </p>
             </div>
           </div>
-          <CategoryAmountsList transactions={filteredTransactions} />
+          <CashFlowChart transactions={filteredTransactions} />
         </div>
       </div>
 
-      {/* Cash Flow Trends Chart */}
-      <div className="glass-card">
+      {/* Category Amounts Breakdown Section Below Charts */}
+      <div className="glass-card glass-card-glow-green">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
-          <BarChart3 size={22} color="var(--accent-electric-blue)" />
+          <ListOrdered size={22} color="var(--accent-neon-green)" />
           <div>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              Outflow & Cash Flow Trends
+              Category Amounts Breakdown
             </h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Temporal trends for selected date range
+              Prominently visible expense amounts, percentage share, and progress bars
             </p>
           </div>
         </div>
-        <CashFlowChart transactions={filteredTransactions} />
+        <CategoryAmountsList transactions={filteredTransactions} />
       </div>
 
       {/* Comprehensive Category Amounts Analysis Table */}

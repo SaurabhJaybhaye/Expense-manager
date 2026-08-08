@@ -175,9 +175,9 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
       {/* AI Financial Insights & Health Score Widget */}
       <AiInsightsWidget />
 
-      {/* Interactive Analytics & Chart Grid */}
+      {/* Side-by-Side Charts Row: Category Distribution & Cash Flow Trends */}
       <div className="grid-2">
-        {/* Section 1: Category Distribution (Pie Chart) */}
+        {/* Category Distribution (Pie Chart) */}
         <div className="glass-card glass-card-glow-purple">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -193,27 +193,27 @@ export const Dashboard = ({ onOpenAddTransaction }) => {
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* Section 2: Category Amounts Section */}
-        <div className="glass-card glass-card-glow-green">
+        {/* Cash Flow Line & Bar Chart */}
+        <div className="glass-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
-            <ListOrdered size={20} color="var(--accent-neon-green)" />
+            <BarChart3 size={20} color="var(--accent-electric-blue)" />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Category Amounts Breakdown
+              Cash Flow Trends
             </h3>
           </div>
-          <CategoryAmountsList transactions={filteredTransactions} />
+          <CashFlowChart transactions={filteredTransactions} />
         </div>
       </div>
 
-      {/* Cash Flow Line & Bar Chart */}
-      <div className="glass-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-          <BarChart3 size={20} color="var(--accent-electric-blue)" />
+      {/* Category Amounts Breakdown Section Below Charts */}
+      <div className="glass-card glass-card-glow-green">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+          <ListOrdered size={20} color="var(--accent-neon-green)" />
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Cash Flow Trends
+            Category Amounts Breakdown
           </h3>
         </div>
-        <CashFlowChart transactions={filteredTransactions} />
+        <CategoryAmountsList transactions={filteredTransactions} />
       </div>
 
       {/* Recent Activity Table */}
